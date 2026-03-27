@@ -214,6 +214,27 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Fees & Charges Card */}
+      <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-white font-semibold">Fees &amp; Charges</h3>
+          <button onClick={() => navigate('/fees')} className="text-amber-400 hover:text-amber-300 text-xs transition-colors">View full schedule →</button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          {[
+            { label: 'Annual Storage Fee', value: '0.5% p.a.', sub: 'of asset value' },
+            { label: 'Withdrawal Processing', value: '$50 + 0.25%', sub: 'per request' },
+            { label: 'Insurance Premium', value: '0.1% / month', sub: 'of stored value' },
+          ].map(fee => (
+            <div key={fee.label} className="bg-slate-800/50 border border-slate-700 rounded-lg px-4 py-3">
+              <p className="text-slate-500 text-xs mb-1">{fee.label}</p>
+              <p className="text-amber-400 font-bold text-sm">{fee.value}</p>
+              <p className="text-slate-600 text-xs mt-0.5">{fee.sub}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
       <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
         <h3 className="text-white font-semibold mb-4">Recent Activity</h3>
         <div className="overflow-x-auto">

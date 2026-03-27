@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail, Shield, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import VaultLogo from '../components/VaultLogo';
 import { DEMO_CREDENTIALS } from '../data/mockData';
@@ -127,6 +127,19 @@ export default function Login() {
         <p className="text-center text-slate-600 text-xs mt-6">
           © 2024 InvestgoV1.001. All rights reserved. · Regulated by FSCA
         </p>
+
+        <div className="mt-6 grid grid-cols-3 gap-2">
+          {[
+            { icon: Lock, label: '256-bit Encryption' },
+            { icon: Shield, label: "Lloyd's Insured" },
+            { icon: CheckCircle, label: 'FSCA Regulated' },
+          ].map(({ icon: Icon, label }) => (
+            <div key={label} className="flex flex-col items-center gap-1.5 bg-slate-900/60 border border-slate-800 rounded-lg px-2 py-3">
+              <Icon size={16} className="text-amber-400" />
+              <span className="text-slate-500 text-xs text-center leading-tight">{label}</span>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );

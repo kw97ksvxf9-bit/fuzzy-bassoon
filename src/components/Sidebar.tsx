@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, FileText, User, ShieldCheck, Crown, Info, LogOut, X, HeadphonesIcon } from 'lucide-react';
+import { LayoutDashboard, Package, FileText, User, ShieldCheck, Crown, Info, LogOut, X, HeadphonesIcon, Receipt, Scale, Shield } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import VaultLogo from './VaultLogo';
 
@@ -12,9 +12,17 @@ const baseNavLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/assets', label: 'Assets', icon: Package },
   { to: '/reports', label: 'Reports', icon: FileText },
+  { to: '/fees', label: 'Fees', icon: Receipt },
   { to: '/support', label: 'Support', icon: HeadphonesIcon },
   { to: '/profile', label: 'Profile', icon: User },
   { to: '/about', label: 'About', icon: Info },
+];
+
+const legalLinks = [
+  { to: '/security', label: 'Security', icon: Shield },
+  { to: '/terms', label: 'Terms of Service', icon: Scale },
+  { to: '/privacy', label: 'Privacy Policy', icon: FileText },
+  { to: '/disclaimer', label: 'Disclaimer', icon: FileText },
 ];
 
 export default function Sidebar({ open, onClose }: SidebarProps) {
@@ -61,7 +69,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           </button>
         </div>
 
-        <nav className="p-4 space-y-1 flex-1">
+        <nav className="p-4 space-y-1 flex-1 overflow-y-auto">
           {links.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
@@ -76,6 +84,27 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
               }
             >
               <Icon size={18} />
+              {label}
+            </NavLink>
+          ))}
+
+          <div className="pt-3 pb-1">
+            <p className="px-4 text-slate-600 text-xs font-semibold uppercase tracking-wider mb-1">Legal</p>
+          </div>
+          {legalLinks.map(({ to, label, icon: Icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              onClick={() => onClose()}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+                  isActive
+                    ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30'
+                    : 'text-slate-500 hover:text-white hover:bg-slate-800'
+                }`
+              }
+            >
+              <Icon size={16} />
               {label}
             </NavLink>
           ))}

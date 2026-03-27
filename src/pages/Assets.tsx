@@ -82,6 +82,7 @@ export default function Assets() {
   const [feePaymentMethod, setFeePaymentMethod] = useState<'deduct' | 'upfront' | null>(null);
   const [confirmed, setConfirmed] = useState(false);
   const [toast, setToast] = useState('');
+  const [successRef, setSuccessRef] = useState<string | null>(null);
 
   const fmt = (val: number) => formatCurrency(val, currency);
 
@@ -148,7 +149,7 @@ export default function Assets() {
 
   function handleSubmit() {
     if (!wizardAsset || !currentUser || !withdrawalType || !feePaymentMethod) return;
-    const ref = `WR-${Date.now().toString().slice(-6)}`;
+    const ref = `WDR-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`;
     requestWithdrawal(wizardAsset.id, currentUser.id, currentUser.name, wizardAsset.type, {
       withdrawalMethod: withdrawalType,
       bankDetails: withdrawalType === 'bank_transfer'
@@ -160,8 +161,7 @@ export default function Assets() {
       feePaymentMethod,
       estimatedCompletion: addBusinessDays(new Date(), withdrawalType === 'bank_transfer' ? 14 : 21),
     });
-    setToast(`Withdrawal request submitted! Reference: ${ref}`);
-    setWizardAsset(null);
+    setSuccessRef(ref);
   }
 
   const inputCls = "w-full bg-slate-800 border border-slate-700 text-white text-sm rounded-lg px-3 py-2.5 focus:outline-none focus:border-amber-400 placeholder-slate-500 transition-colors";
@@ -643,6 +643,42 @@ export default function Assets() {
                   <Check size={16} /> Submit Withdrawal Request
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Success Modal */}
+      {successRef && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-amber-400/20 rounded-2xl w-full max-w-md shadow-2xl text-center p-8">
+            <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-5">
+              <Check size={32} className="text-green-400" />
+            </div>
+            <h2 className="text-white font-bold text-xl mb-2">Request Submitted!</h2>
+            <p className="text-slate-400 text-sm mb-5">
+              Your withdrawal request has been submitted successfully and is now pending review.
+            </p>
+            <div className="bg-slate-800 border border-slate-700 rounded-xl px-5 py-4 mb-5">
+              <p className="text-slate-500 text-xs uppercase tracking-wide mb-1">Reference Number</p>
+              <p className="text-amber-400 font-bold font-mono text-lg">{successRef}</p>
+            </div>
+            <p className="text-slate-500 text-xs mb-6">
+              You can track the status of your request in the <span className="text-amber-400">Reports</span> page. Processing takes up to 14–21 business days.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setSuccessRef(null); setWizardAsset(null); navigate('/reports'); }}
+                className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+              >
+                View Reports
+              </button>
+              <button
+                onClick={() => { setSuccessRef(null); setWizardAsset(null); }}
+                className="flex-1 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+              >
+                Back to Assets
+              </button>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { AssetsProvider } from './context/AssetsContext';
+import { ChatProvider } from './context/ChatContext';
 import ErrorBoundary from './components/ErrorBoundary';
 import Layout from './components/Layout';
 import Login from './pages/Login';
@@ -13,6 +14,11 @@ import Admin from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
 import Support from './pages/Support';
 import About from './pages/About';
+import Fees from './pages/Fees';
+import Terms from './pages/Terms';
+import Privacy from './pages/Privacy';
+import Disclaimer from './pages/Disclaimer';
+import Security from './pages/Security';
 
 function ProtectedLayoutRoute() {
   const { isAuthenticated } = useAuth();
@@ -46,6 +52,11 @@ function AppRoutes() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/support" element={<Support />} />
         <Route path="/about" element={<About />} />
+        <Route path="/fees" element={<Fees />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/disclaimer" element={<Disclaimer />} />
+        <Route path="/security" element={<Security />} />
         <Route path="/admin" element={<AdminRoute />} />
         <Route path="/superadmin" element={<SuperAdminRoute />} />
       </Route>
@@ -59,9 +70,11 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <AssetsProvider>
-          <BrowserRouter>
-            <AppRoutes />
-          </BrowserRouter>
+          <ChatProvider>
+            <BrowserRouter>
+              <AppRoutes />
+            </BrowserRouter>
+          </ChatProvider>
         </AssetsProvider>
       </AuthProvider>
     </ErrorBoundary>

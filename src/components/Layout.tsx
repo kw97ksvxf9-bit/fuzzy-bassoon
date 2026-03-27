@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Header from './Header';
+import ChatWidget from './ChatWidget';
 
 const pageTitles: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -12,6 +13,11 @@ const pageTitles: Record<string, string> = {
   '/superadmin': 'Super Admin Panel',
   '/support': 'Support Center',
   '/about': 'About InvestgoV1.001',
+  '/fees': 'Fees & Charges',
+  '/terms': 'Terms of Service',
+  '/privacy': 'Privacy Policy',
+  '/disclaimer': 'Investment Disclaimer',
+  '/security': 'Trust & Security',
 };
 
 export default function Layout() {
@@ -28,6 +34,7 @@ export default function Layout() {
           <Outlet />
         </main>
       </div>
+      <ChatWidget />
     </div>
   );
 }
