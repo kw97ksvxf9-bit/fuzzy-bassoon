@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ShieldCheck, ArrowLeft } from 'lucide-react';
+import { useNavigate, Link } from 'react-router-dom';
+import { ShieldCheck, ArrowLeft, Smartphone } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import VaultLogo from '../components/VaultLogo';
 
@@ -12,6 +12,7 @@ export default function OTP() {
   const [error, setError] = useState('');
   const [canResend, setCanResend] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const is2FA = !!pendingUser?.twoFactorEnabled;
 
   useEffect(() => {
     if (!pendingUser) {
@@ -57,7 +58,7 @@ export default function OTP() {
       const user = pendingUser;
       navigate(user?.role === 'admin' ? '/admin' : '/dashboard');
     } else {
-      setError('Invalid OTP. Demo code: 123456');
+      setError(is2FA ? 'Invalid code. Please check your authenticator app.' : 'Invalid OTP. Demo code: 123456');
       setOtp(['', '', '', '', '', '']);
       inputRefs.current[0]?.focus();
     }
@@ -82,24 +83,40 @@ export default function OTP() {
           <div className="flex justify-center mb-4">
             <VaultLogo size={64} />
           </div>
-          <h1 className="text-2xl font-bold text-white">Two-Factor Verification</h1>
+          <h1 className="text-2xl font-bold text-white">
+            {is2FA ? 'Two-Factor Authentication' : 'Two-Factor Verification'}
+          </h1>
           <p className="text-slate-400 text-sm mt-2">VaultSecure SA Security Protocol</p>
         </div>
 
         <div className="bg-slate-900 border border-amber-400/20 rounded-2xl p-8 shadow-2xl">
           <div className="flex items-center gap-3 mb-6">
             <div className="p-2 bg-amber-400/10 rounded-lg">
-              <ShieldCheck size={22} className="text-amber-400" />
+              {is2FA ? <Smartphone size={22} className="text-amber-400" /> : <ShieldCheck size={22} className="text-amber-400" />}
             </div>
             <div>
-              <h2 className="text-white font-semibold">Enter Verification Code</h2>
-              <p className="text-slate-400 text-xs mt-0.5">Sent to {pendingUser?.email}</p>
+              <h2 className="text-white font-semibold">
+                {is2FA ? 'Enter your 2FA Code' : 'Enter Verification Code'}
+              </h2>
+              <p className="text-slate-400 text-xs mt-0.5">
+                {is2FA
+                  ? 'Open your authenticator app and enter the 6-digit code'
+                  : `Sent to ${pendingUser?.email}`}
+              </p>
             </div>
           </div>
 
-          <div className="mb-4 p-3 bg-amber-400/10 border border-amber-400/30 rounded-lg">
-            <p className="text-amber-400 text-xs text-center">Demo OTP code: <strong>123456</strong></p>
-          </div>
+          {!is2FA && (
+            <div className="mb-4 p-3 bg-amber-400/10 border border-amber-400/30 rounded-lg">
+              <p className="text-amber-400 text-xs text-center">Demo OTP code: <strong>123456</strong></p>
+            </div>
+          )}
+
+          {is2FA && (
+            <div className="mb-4 p-3 bg-blue-400/10 border border-blue-400/30 rounded-lg">
+              <p className="text-blue-400 text-xs text-center">Enter any 6-digit code from your authenticator app (demo: any 6 digits)</p>
+            </div>
+          )}
 
           {error && (
             <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-red-400 text-sm">
@@ -125,7 +142,11 @@ export default function OTP() {
             </div>
 
             <div className="text-center mb-4">
-              {canResend ? (
+              {is2FA ? (
+                <Link to="/support" className="text-slate-400 text-sm hover:text-amber-400 transition-colors">
+                  Having trouble? Contact support
+                </Link>
+              ) : canResend ? (
                 <button type="button" onClick={handleResend} className="text-amber-400 text-sm hover:underline">
                   Resend OTP
                 </button>
@@ -140,7 +161,7 @@ export default function OTP() {
               type="submit"
               className="w-full bg-amber-400 hover:bg-amber-500 text-slate-900 font-bold py-3 rounded-lg transition-colors"
             >
-              Verify & Access Portal
+              {is2FA ? 'Verify & Access Portal' : 'Verify & Access Portal'}
             </button>
           </form>
 

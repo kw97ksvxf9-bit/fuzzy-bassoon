@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, FileText, User, ShieldCheck, Crown, Info, LogOut, X, HeadphonesIcon } from 'lucide-react';
+import { LayoutDashboard, Package, FileText, User, ShieldCheck, Crown, Info, LogOut, X, HeadphonesIcon, ClipboardCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import VaultLogo from './VaultLogo';
 
@@ -13,6 +13,7 @@ const baseNavLinks = [
   { to: '/assets', label: 'Assets', icon: Package },
   { to: '/reports', label: 'Reports', icon: FileText },
   { to: '/support', label: 'Support', icon: HeadphonesIcon },
+  { to: '/kyc', label: 'KYC Verification', icon: ClipboardCheck },
   { to: '/profile', label: 'Profile', icon: User },
   { to: '/about', label: 'About', icon: Info },
 ];

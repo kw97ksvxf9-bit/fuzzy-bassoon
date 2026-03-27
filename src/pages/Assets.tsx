@@ -152,7 +152,7 @@ export default function Assets() {
     requestWithdrawal(wizardAsset.id, currentUser.id, currentUser.name, wizardAsset.type, {
       withdrawalMethod: withdrawalType,
       bankDetails: withdrawalType === 'bank_transfer'
-        ? { region: bankRegion, bankName: bankDetails.bankName, accountHolder: bankDetails.accountHolder, ...bankDetails }
+        ? { region: bankRegion, ...bankDetails }
         : undefined,
       deliveryAddress: withdrawalType === 'physical_delivery' ? deliveryAddress : undefined,
       deliveryPhone: withdrawalType === 'physical_delivery' ? deliveryPhone : undefined,

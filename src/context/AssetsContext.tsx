@@ -49,8 +49,12 @@ interface AssetsContextType {
   respondToTicket: (ticketId: string, response: Omit<TicketResponse, 'id' | 'ticketId' | 'createdAt'>) => void;
   updateTicketStatus: (ticketId: string, status: SupportTicket['status']) => void;
   markNotificationRead: (notificationId: string) => void;
+  markAllNotificationsRead: (userId: string) => void;
   updatePlatformSettings: (settings: Partial<PlatformSettings>) => void;
   updateUser: (userId: string, updates: Partial<User>) => void;
+  submitKyc: (userId: string, documents: { type: string; fileName: string; uploadDate: string }[]) => void;
+  approveKyc: (userId: string) => void;
+  rejectKyc: (userId: string, reason: string) => void;
 }
 
 const AssetsContext = createContext<AssetsContextType | null>(null);
@@ -173,7 +177,13 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
 
   const markNotificationRead = (notificationId: string) => {
     setNotifications(prev =>
-      prev.map(n => n.id === notificationId ? { ...n, unread: false } : n)
+      prev.map(n => n.id === notificationId ? { ...n, read: true } : n)
+    );
+  };
+
+  const markAllNotificationsRead = (userId: string) => {
+    setNotifications(prev =>
+      prev.map(n => n.userId === userId ? { ...n, read: true } : n)
     );
   };
 
@@ -183,6 +193,84 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
 
   const updateUser = (userId: string, updates: Partial<User>) => {
     setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, ...updates } : u));
+  };
+
+  const submitKyc = (userId: string, documents: { type: string; fileName: string; uploadDate: string }[]) => {
+    const now = new Date().toISOString();
+    setAllUsers(prev => prev.map(u => u.id === userId ? {
+      ...u,
+      kycStatus: 'pending' as const,
+      kycDocuments: documents,
+      kycSubmittedAt: now,
+    } : u));
+    setNotifications(prev => {
+      const user = allUsers.find(u => u.id === userId);
+      const id = `NOTIF-KYC-${Date.now()}`;
+      const adminNotifs: Notification[] = allUsers
+        .filter(u => u.role === 'superadmin' || u.role === 'admin')
+        .map(admin => ({
+          id: `${id}-${admin.id}`,
+          userId: admin.id,
+          type: 'kyc' as const,
+          title: 'KYC Submission',
+          message: `${user?.name ?? 'A user'} has submitted KYC documents for review`,
+          read: false,
+          createdAt: now,
+          link: '/superadmin',
+        }));
+      const userNotif: Notification = {
+        id,
+        userId,
+        type: 'kyc',
+        title: 'KYC Submitted',
+        message: 'Your KYC documents have been submitted and are under review',
+        read: false,
+        createdAt: now,
+        link: '/kyc',
+      };
+      return [...prev, userNotif, ...adminNotifs];
+    });
+  };
+
+  const approveKyc = (userId: string) => {
+    const now = new Date().toISOString();
+    setAllUsers(prev => prev.map(u => u.id === userId ? {
+      ...u,
+      kycStatus: 'verified' as const,
+      verified: true,
+      kycReviewedAt: now,
+      kycRejectionReason: undefined,
+    } : u));
+    setNotifications(prev => [...prev, {
+      id: `NOTIF-KYC-APPROVED-${Date.now()}`,
+      userId,
+      type: 'kyc' as const,
+      title: 'KYC Approved',
+      message: 'Your identity has been verified. Your account is now fully verified.',
+      read: false,
+      createdAt: now,
+      link: '/profile',
+    }]);
+  };
+
+  const rejectKyc = (userId: string, reason: string) => {
+    const now = new Date().toISOString();
+    setAllUsers(prev => prev.map(u => u.id === userId ? {
+      ...u,
+      kycStatus: 'rejected' as const,
+      kycReviewedAt: now,
+      kycRejectionReason: reason,
+    } : u));
+    setNotifications(prev => [...prev, {
+      id: `NOTIF-KYC-REJECTED-${Date.now()}`,
+      userId,
+      type: 'kyc' as const,
+      title: 'KYC Rejected',
+      message: `Your KYC submission was not approved. Reason: ${reason}`,
+      read: false,
+      createdAt: now,
+      link: '/kyc',
+    }]);
   };
 
   return (
@@ -204,8 +292,12 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
       respondToTicket,
       updateTicketStatus,
       markNotificationRead,
+      markAllNotificationsRead,
       updatePlatformSettings,
       updateUser,
+      submitKyc,
+      approveKyc,
+      rejectKyc,
     }}>
       {children}
     </AssetsContext.Provider>

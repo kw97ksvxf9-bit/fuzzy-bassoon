@@ -13,6 +13,7 @@ import Admin from './pages/Admin';
 import SuperAdmin from './pages/SuperAdmin';
 import Support from './pages/Support';
 import About from './pages/About';
+import KYC from './pages/KYC';
 
 function ProtectedLayoutRoute() {
   const { isAuthenticated } = useAuth();
@@ -46,6 +47,7 @@ function AppRoutes() {
         <Route path="/reports" element={<Reports />} />
         <Route path="/support" element={<Support />} />
         <Route path="/about" element={<About />} />
+        <Route path="/kyc" element={<KYC />} />
         <Route path="/admin" element={<AdminRoute />} />
         <Route path="/superadmin" element={<SuperAdminRoute />} />
       </Route>

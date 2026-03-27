@@ -42,7 +42,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const verifyOTP = (otp: string) => {
-    if (otp === '123456' && pendingUser) {
+    if (!pendingUser) return false;
+    // If user has 2FA enabled via authenticator app, accept any valid 6-digit number
+    if (pendingUser.twoFactorEnabled && /^\d{6}$/.test(otp)) {
+      setCurrentUser(pendingUser);
+      localStorage.setItem('vaultsecure_user', JSON.stringify(pendingUser));
+      setPendingUser(null);
+      return true;
+    }
+    // Standard email OTP verification (demo code: 123456)
+    if (otp === '123456') {
       setCurrentUser(pendingUser);
       localStorage.setItem('vaultsecure_user', JSON.stringify(pendingUser));
       setPendingUser(null);

@@ -11,6 +11,13 @@ export interface User {
   suspended?: boolean;
   withdrawalBlocked?: boolean;
   withdrawalBlockReason?: string;
+  kycStatus?: 'unverified' | 'pending' | 'verified' | 'rejected';
+  kycDocuments?: { type: string; fileName: string; uploadDate: string }[];
+  kycSubmittedAt?: string;
+  kycReviewedAt?: string;
+  kycRejectionReason?: string;
+  twoFactorEnabled?: boolean;
+  twoFactorSetupDate?: string;
 }
 
 export interface Asset {
@@ -88,10 +95,12 @@ export interface SupportTicket {
 export interface Notification {
   id: string;
   userId: string;
-  text: string;
-  time: string;
-  unread: boolean;
-  type: 'withdrawal' | 'fee' | 'deposit' | 'support' | 'system';
+  type: 'withdrawal' | 'kyc' | 'support' | 'investment' | 'system';
+  title: string;
+  message: string;
+  read: boolean;
+  createdAt: string;
+  link?: string;
 }
 
 export interface PlatformSettings {
@@ -102,10 +111,10 @@ export interface PlatformSettings {
 }
 
 export const users: User[] = [
-  { id: 'USR000', name: 'Director Supreme', email: 'superadmin@vaultsecure.co.za', role: 'superadmin', verified: true, phone: '+27 10 999 0000', address: '1 Gold Reef Road, Johannesburg, 2001', idNumber: '7501015800080', accountType: 'Director' },
-  { id: 'USR001', name: 'James Whitfield', email: 'admin@vaultsecure.co.za', role: 'admin', verified: true, phone: '+27 11 234 5678', address: '45 Sandton Drive, Johannesburg, 2196', idNumber: '8001015800080', accountType: 'Premium' },
-  { id: 'USR002', name: 'Sarah Dlamini', email: 'user@vaultsecure.co.za', role: 'user', verified: true, phone: '+27 21 456 7890', address: '12 Buitenkant Street, Cape Town, 8001', idNumber: '9205165234087', accountType: 'Standard' },
-  { id: 'USR003', name: 'Marcus van der Berg', email: 'marcus@example.com', role: 'user', verified: false, phone: '+27 31 678 9012', address: '78 Musgrave Road, Durban, 4001', idNumber: '8712085432019', accountType: 'Standard' },
+  { id: 'USR000', name: 'Director Supreme', email: 'superadmin@vaultsecure.co.za', role: 'superadmin', verified: true, phone: '+27 10 999 0000', address: '1 Gold Reef Road, Johannesburg, 2001', idNumber: '7501015800080', accountType: 'Director', kycStatus: 'verified', kycReviewedAt: '2022-01-01' },
+  { id: 'USR001', name: 'James Whitfield', email: 'admin@vaultsecure.co.za', role: 'admin', verified: true, phone: '+27 11 234 5678', address: '45 Sandton Drive, Johannesburg, 2196', idNumber: '8001015800080', accountType: 'Premium', kycStatus: 'verified', kycReviewedAt: '2022-03-15' },
+  { id: 'USR002', name: 'Sarah Dlamini', email: 'user@vaultsecure.co.za', role: 'user', verified: true, phone: '+27 21 456 7890', address: '12 Buitenkant Street, Cape Town, 8001', idNumber: '9205165234087', accountType: 'Standard', kycStatus: 'verified', kycReviewedAt: '2023-01-20' },
+  { id: 'USR003', name: 'Marcus van der Berg', email: 'marcus@example.com', role: 'user', verified: false, phone: '+27 31 678 9012', address: '78 Musgrave Road, Durban, 4001', idNumber: '8712085432019', accountType: 'Standard', kycStatus: 'pending', kycSubmittedAt: '2024-02-14', kycDocuments: [{ type: 'Government ID', fileName: 'passport_marcus.pdf', uploadDate: '2024-02-14' }, { type: 'Proof of Address', fileName: 'utility_bill_marcus.jpg', uploadDate: '2024-02-14' }] },
 ];
 
 export const assets: Asset[] = [
@@ -208,13 +217,15 @@ export const supportTickets: SupportTicket[] = [
 ];
 
 export const notifications: Notification[] = [
-  { id: 'NOTIF-001', userId: 'USR002', text: 'Withdrawal request WR-001 is pending approval', time: '2h ago', unread: true, type: 'withdrawal' },
-  { id: 'NOTIF-002', userId: 'USR002', text: 'Storage fee due in 5 days for AST-001', time: '1d ago', unread: true, type: 'fee' },
-  { id: 'NOTIF-003', userId: 'USR002', text: 'New certificate available for AST-005', time: '2d ago', unread: false, type: 'deposit' },
-  { id: 'NOTIF-004', userId: 'USR001', text: 'New withdrawal request WR-001 requires approval', time: '2h ago', unread: true, type: 'withdrawal' },
-  { id: 'NOTIF-005', userId: 'USR001', text: 'Support ticket TKT-002 opened by Marcus van der Berg', time: '3d ago', unread: true, type: 'support' },
-  { id: 'NOTIF-006', userId: 'USR000', text: 'Platform: 2 pending withdrawal requests', time: '2h ago', unread: true, type: 'system' },
-  { id: 'NOTIF-007', userId: 'USR000', text: 'New user registered: Marcus van der Berg (pending verification)', time: '1w ago', unread: false, type: 'system' },
+  { id: 'NOTIF-001', userId: 'USR002', type: 'withdrawal', title: 'Withdrawal Pending', message: 'Withdrawal request WR-001 is pending approval', read: false, createdAt: '2024-02-15T15:00:00', link: '/reports' },
+  { id: 'NOTIF-002', userId: 'USR002', type: 'system', title: 'Storage Fee Due', message: 'Storage fee due in 5 days for AST-001', read: false, createdAt: '2024-02-14T10:00:00', link: '/reports' },
+  { id: 'NOTIF-003', userId: 'USR002', type: 'investment', title: 'Certificate Available', message: 'New certificate available for AST-005', read: true, createdAt: '2024-02-13T09:00:00', link: '/assets' },
+  { id: 'NOTIF-004', userId: 'USR001', type: 'withdrawal', title: 'New Withdrawal Request', message: 'New withdrawal request WR-001 requires approval', read: false, createdAt: '2024-02-15T15:00:00', link: '/superadmin' },
+  { id: 'NOTIF-005', userId: 'USR001', type: 'support', title: 'New Support Ticket', message: 'Support ticket TKT-002 opened by Marcus van der Berg', read: false, createdAt: '2024-02-12T09:15:00', link: '/superadmin' },
+  { id: 'NOTIF-006', userId: 'USR000', type: 'system', title: 'Pending Withdrawals', message: 'Platform: 2 pending withdrawal requests require action', read: false, createdAt: '2024-02-15T15:00:00', link: '/superadmin' },
+  { id: 'NOTIF-007', userId: 'USR000', type: 'system', title: 'New User Registration', message: 'New user registered: Marcus van der Berg (pending verification)', read: true, createdAt: '2024-02-08T08:00:00', link: '/superadmin' },
+  { id: 'NOTIF-008', userId: 'USR000', type: 'kyc', title: 'KYC Submission', message: 'Marcus van der Berg has submitted KYC documents for review', read: false, createdAt: '2024-02-14T09:15:00', link: '/superadmin' },
+  { id: 'NOTIF-009', userId: 'USR003', type: 'kyc', title: 'KYC Under Review', message: 'Your KYC documents have been received and are under review', read: false, createdAt: '2024-02-14T09:20:00', link: '/kyc' },
 ];
 
 export const platformSettings: PlatformSettings = {
