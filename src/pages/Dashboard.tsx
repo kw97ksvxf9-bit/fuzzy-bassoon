@@ -1,11 +1,14 @@
 import { useState } from 'react';
-import { TrendingUp, Package, Clock, DollarSign, RefreshCw } from 'lucide-react';
+import { TrendingUp, Package, Clock, DollarSign, TrendingDown, RefreshCw } from 'lucide-react';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   LineChart, Line, XAxis, YAxis, CartesianGrid
 } from 'recharts';
-import { assets, transactions, portfolioHistory, assetBreakdown, USD_TO_ZAR } from '../data/mockData';
+import { portfolioHistory, assetBreakdown } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { useAssets } from '../context/AssetsContext';
+import { CURRENCIES, type Currency, getCurrencyConfig, formatCurrency } from '../data/currencies';
+import { useGoldPrice, TROY_OZ_PER_BAR } from '../hooks/useGoldPrice';
 
 const statusColors: Record<string, string> = {
   Completed: 'bg-green-500/20 text-green-400',
@@ -15,39 +18,84 @@ const statusColors: Record<string, string> = {
 
 export default function Dashboard() {
   const { currentUser } = useAuth();
-  const [currency, setCurrency] = useState<'USD' | 'ZAR'>('USD');
+  const { assets, transactions } = useAssets();
+  const [currency, setCurrency] = useState<Currency>('USD');
+  const goldPrice = useGoldPrice();
 
-  const userAssets = currentUser?.role === 'admin' ? assets : assets.filter(a => a.userId === currentUser?.id);
-  const totalValue = userAssets.reduce((sum, a) => sum + a.valueUSD, 0);
+  const cfg = getCurrencyConfig(currency);
+
+  const userAssets = currentUser?.role === 'admin'
+    ? assets
+    : assets.filter(a => a.userId === currentUser?.id);
+
+  /** Current USD value of an asset — gold uses live price, others use deposit value */
+  function getCurrentValueUSD(asset: typeof assets[number]): number {
+    if (asset.type === 'Gold' && !goldPrice.isLoading) {
+      return asset.quantity * TROY_OZ_PER_BAR * goldPrice.priceUSD;
+    }
+    return asset.valueUSD;
+  }
+
+  const totalValue = userAssets.reduce((sum, a) => sum + getCurrentValueUSD(a), 0);
   const pendingWithdrawals = userAssets.filter(a => a.status === 'Pending Withdrawal').length;
   const storageFee = Math.round(totalValue * 0.005);
 
-  const fmt = (val: number) => currency === 'USD'
-    ? `$${val.toLocaleString()}`
-    : `R${(val * USD_TO_ZAR).toLocaleString()}`;
+  const fmt = (val: number) => formatCurrency(val, currency);
 
-  const recentTxn = transactions.slice(0, 5);
+  const userTxns = currentUser?.role === 'admin'
+    ? transactions
+    : transactions.filter(t => t.userId === currentUser?.id);
+  const recentTxn = userTxns.slice(0, 5);
 
   const chartData = portfolioHistory.map(p => ({
     ...p,
-    value: currency === 'USD' ? p.value : p.value * USD_TO_ZAR,
+    value: p.value * cfg.rateFromUSD,
   }));
+
+  const priceUp = goldPrice.priceUSD >= goldPrice.previousPriceUSD;
+  const priceDiff = goldPrice.priceUSD - goldPrice.previousPriceUSD;
+  const goldPriceInCurrency = goldPrice.priceUSD * cfg.rateFromUSD;
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <p className="text-slate-400 text-sm">Welcome back, <span className="text-amber-400 font-medium">{currentUser?.name}</span></p>
+      <div className="flex flex-wrap justify-between items-center gap-3">
+        <p className="text-slate-400 text-sm">
+          Welcome back, <span className="text-amber-400 font-medium">{currentUser?.name}</span>
+        </p>
         <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg">
           <RefreshCw size={14} className="text-slate-500 ml-2" />
-          {(['USD', 'ZAR'] as const).map(c => (
+          {CURRENCIES.map(c => (
             <button
-              key={c}
-              onClick={() => setCurrency(c)}
-              className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${currency === c ? 'bg-amber-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}
+              key={c.code}
+              onClick={() => setCurrency(c.code)}
+              className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${currency === c.code ? 'bg-amber-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}
             >
-              {c}
+              {c.code}
             </button>
           ))}
+        </div>
+      </div>
+
+      {/* Live Gold Price Ticker */}
+      <div className="bg-slate-900 border border-amber-400/30 rounded-xl px-5 py-3 flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <span className="text-amber-400 font-semibold text-sm">GOLD SPOT</span>
+          {goldPrice.isLoading ? (
+            <span className="text-slate-400 text-sm animate-pulse">Loading…</span>
+          ) : (
+            <>
+              <span className="text-white font-bold text-lg">
+                {cfg.symbol}{goldPriceInCurrency.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}/oz
+              </span>
+              <span className={`flex items-center gap-1 text-sm font-medium ${priceUp ? 'text-green-400' : 'text-red-400'}`}>
+                {priceUp ? <TrendingUp size={14} /> : <TrendingDown size={14} />}
+                {priceUp ? '+' : ''}{(priceDiff * cfg.rateFromUSD).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+            </>
+          )}
+        </div>
+        <div className="text-slate-500 text-xs ml-auto">
+          Updated: {goldPrice.lastUpdated.toLocaleTimeString()} · auto-refreshes every 30s
         </div>
       </div>
 
@@ -97,10 +145,10 @@ export default function Dashboard() {
               <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
               <XAxis dataKey="month" tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} />
               <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false}
-                tickFormatter={(v) => currency === 'USD' ? `$${(v/1000).toFixed(0)}k` : `R${(v/1000).toFixed(0)}k`}
+                tickFormatter={(v) => `${cfg.symbol}${(v / 1000).toFixed(0)}k`}
               />
               <Tooltip
-                formatter={(value) => [fmt(Number(value ?? 0)), 'Value']}
+                formatter={(value) => [`${cfg.symbol}${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, 'Value']}
                 contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #D4AF37', borderRadius: 8, color: 'white' }}
               />
               <Line type="monotone" dataKey="value" stroke="#D4AF37" strokeWidth={2} dot={false} activeDot={{ r: 5 }} />

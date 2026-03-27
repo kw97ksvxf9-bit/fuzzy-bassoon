@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { Download, FileText, BarChart3 } from 'lucide-react';
-import { transactions } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { useAssets } from '../context/AssetsContext';
+import type { Transaction } from '../data/mockData';
 
 function downloadMockPDF(filename: string, title: string) {
   const content = `VAULTSECURE SA\n${title}\nGenerated: ${new Date().toLocaleString()}\n\nDemo report from VaultSecure SA.`;
@@ -10,7 +11,7 @@ function downloadMockPDF(filename: string, title: string) {
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
 
-function exportCSV(data: typeof transactions) {
+function exportCSV(data: Transaction[]) {
   const headers = 'ID,Type,Asset,Amount (USD),Date,Status,Description\n';
   const rows = data.map(t => `${t.id},${t.type},${t.assetId},${t.amount},${t.date},${t.status},"${t.description}"`).join('\n');
   const blob = new Blob([headers + rows], { type: 'text/csv' });
@@ -22,6 +23,7 @@ const statusColors: Record<string, string> = { Completed: 'bg-green-500/20 text-
 
 export default function Reports() {
   const { currentUser } = useAuth();
+  const { transactions } = useAssets();
   const [fromDate, setFromDate] = useState('2023-01-01');
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
   const userTxns = currentUser?.role === 'admin' ? transactions : transactions.filter(t => t.userId === currentUser?.id);
