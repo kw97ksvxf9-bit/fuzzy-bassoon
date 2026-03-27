@@ -3,6 +3,7 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { generalLimiter, authLimiter } from './middleware/rateLimiter.js';
 
 import authRouter from './routes/auth.js';
 import usersRouter from './routes/users.js';
@@ -27,11 +28,11 @@ app.use(cors({
 app.use(express.json());
 
 // ── API Routes ──────────────────────────────────────────────────────────────
-app.get('/api/health', (_req, res) => {
+app.get('/api/health', generalLimiter, (_req, res) => {
   res.json({ status: 'ok', version: '1.0.1', uptime: process.uptime() });
 });
 
-app.use('/api/auth', authRouter);
+app.use('/api/auth', authLimiter, authRouter);
 app.use('/api/users', usersRouter);
 app.use('/api/assets', assetsRouter);
 app.use('/api/transactions', transactionsRouter);
@@ -46,7 +47,7 @@ if (process.env.NODE_ENV === 'production') {
   const distPath = path.join(__dirname, '..', 'dist');
   app.use(express.static(distPath));
   // SPA catch-all: serve index.html for any non-API route
-  app.get('*', (_req, res) => {
+  app.get('*', generalLimiter, (_req, res) => {
     res.sendFile(path.join(distPath, 'index.html'));
   });
 }

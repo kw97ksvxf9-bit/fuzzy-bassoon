@@ -4,8 +4,10 @@ import { users, CREDENTIALS, addLog } from '../data/store.js';
 import { generateToken } from '../middleware/auth.js';
 import type { JwtPayload } from '../middleware/auth.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { authLimiter } from '../middleware/rateLimiter.js';
 
 const router = Router();
+router.use(authLimiter);
 
 // In-memory OTP store: pendingUserId -> otp (always '123456' for demo)
 const pendingOtps = new Map<string, string>();

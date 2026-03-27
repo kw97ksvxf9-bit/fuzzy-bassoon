@@ -3,10 +3,12 @@ import type { Request, Response } from 'express';
 import { transactions, generateId, addLog } from '../data/store.js';
 import { authenticateToken } from '../middleware/auth.js';
 import { requireRole } from '../middleware/roleGuard.js';
+import { generalLimiter } from '../middleware/rateLimiter.js';
 import type { JwtPayload } from '../middleware/auth.js';
 import type { Transaction } from '../types.js';
 
 const router = Router();
+router.use(generalLimiter);
 router.use(authenticateToken);
 
 type AuthReq = Request & { user?: JwtPayload };

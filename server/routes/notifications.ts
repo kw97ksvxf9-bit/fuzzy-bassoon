@@ -2,9 +2,11 @@ import { Router } from 'express';
 import type { Request, Response } from 'express';
 import { notifications } from '../data/store.js';
 import { authenticateToken } from '../middleware/auth.js';
+import { generalLimiter } from '../middleware/rateLimiter.js';
 import type { JwtPayload } from '../middleware/auth.js';
 
 const router = Router();
+router.use(generalLimiter);
 router.use(authenticateToken);
 
 type AuthReq = Request & { user?: JwtPayload };

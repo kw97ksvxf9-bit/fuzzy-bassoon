@@ -2,6 +2,10 @@ import jwt from 'jsonwebtoken';
 import type { Request, Response, NextFunction } from 'express';
 
 const JWT_SECRET = process.env.JWT_SECRET || 'investgo-dev-secret-2024';
+
+if (!process.env.JWT_SECRET && process.env.NODE_ENV === 'production') {
+  console.warn('[WARN] JWT_SECRET is not set. Using default dev secret — this is insecure in production!');
+}
 const TOKEN_EXPIRY = '24h';
 
 export interface JwtPayload {
