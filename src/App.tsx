@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { AssetsProvider } from './context/AssetsContext';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import OTP from './pages/OTP';
@@ -44,9 +45,11 @@ function AppRoutes() {
 export default function App() {
   return (
     <AuthProvider>
-      <BrowserRouter>
-        <AppRoutes />
-      </BrowserRouter>
+      <AssetsProvider>
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
+      </AssetsProvider>
     </AuthProvider>
   );
 }

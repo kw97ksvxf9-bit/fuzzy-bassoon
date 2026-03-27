@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Download, ArrowUpRight, Filter, X } from 'lucide-react';
-import { assets as allAssets, USD_TO_ZAR } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
+import { useAssets } from '../context/AssetsContext';
+import { CURRENCIES, type Currency, formatCurrency } from '../data/currencies';
+import { useGoldPrice, TROY_OZ_PER_BAR } from '../hooks/useGoldPrice';
 
 const statusColors: Record<string, string> = {
   'Stored': 'bg-green-500/20 text-green-400 border border-green-500/30',
@@ -29,17 +31,28 @@ function getDuration(depositDate: string): string {
 
 export default function Assets() {
   const { currentUser } = useAuth();
-  const [currency, setCurrency] = useState<'USD' | 'ZAR'>('USD');
+  const { assets: allAssets } = useAssets();
+  const [currency, setCurrency] = useState<Currency>('USD');
   const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const [withdrawModal, setWithdrawModal] = useState<string | null>(null);
   const [withdrawn, setWithdrawn] = useState<string[]>([]);
+  const goldPrice = useGoldPrice();
+
+  const fmt = (val: number) => formatCurrency(val, currency);
 
   const userAssets = currentUser?.role === 'admin' ? allAssets : allAssets.filter(a => a.userId === currentUser?.id);
   const types = ['All', ...Array.from(new Set(userAssets.map(a => a.type)))];
   const statuses = ['All', 'Stored', 'Pending Withdrawal', 'Delivered'];
   const filtered = userAssets.filter(a => (filterType === 'All' || a.type === filterType) && (filterStatus === 'All' || a.status === filterStatus));
-  const fmt = (val: number) => currency === 'USD' ? `$${val.toLocaleString()}` : `R${(val * USD_TO_ZAR).toLocaleString()}`;
+
+  function getCurrentValueUSD(asset: typeof allAssets[number]): number {
+    if (asset.type === 'Gold' && !goldPrice.isLoading) {
+      return asset.quantity * TROY_OZ_PER_BAR * goldPrice.priceUSD;
+    }
+    return asset.valueUSD;
+  }
+
   const confirmWithdraw = (id: string) => { setWithdrawn(w => [...w, id]); setWithdrawModal(null); };
 
   return (
@@ -50,17 +63,21 @@ export default function Assets() {
           <select value={filterType} onChange={e => setFilterType(e.target.value)} className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400">{types.map(t => <option key={t}>{t}</option>)}</select>
           <select value={filterStatus} onChange={e => setFilterStatus(e.target.value)} className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-2 focus:outline-none focus:border-amber-400">{statuses.map(s => <option key={s}>{s}</option>)}</select>
         </div>
-        <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg">
-          {(['USD', 'ZAR'] as const).map(c => (<button key={c} onClick={() => setCurrency(c)} className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${currency === c ? 'bg-amber-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}>{c}</button>))}
+        <div className="flex items-center gap-1 bg-slate-800 p-1 rounded-lg flex-wrap">
+          {CURRENCIES.map(c => (
+            <button key={c.code} onClick={() => setCurrency(c.code)} className={`px-3 py-1 text-sm rounded-md font-medium transition-colors ${currency === c.code ? 'bg-amber-400 text-slate-900' : 'text-slate-400 hover:text-white'}`}>{c.code}</button>
+          ))}
         </div>
       </div>
       <div className="bg-slate-900 border border-amber-400/20 rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-700 bg-slate-800/50">{['Asset ID','Type','Quantity','Deposit Date','Duration',`Value (${currency})`,'Location','Status','Actions'].map(h => <th key={h} className="text-left px-4 py-3 text-slate-400 font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
+            <thead><tr className="border-b border-slate-700 bg-slate-800/50">{['Asset ID','Type','Quantity','Deposit Date','Duration',`Deposit Value (${currency})`,`Current Value (${currency})`,'Location','Status','Actions'].map(h => <th key={h} className="text-left px-4 py-3 text-slate-400 font-medium whitespace-nowrap">{h}</th>)}</tr></thead>
             <tbody>
               {filtered.map(asset => {
                 const currentStatus = withdrawn.includes(asset.id) ? 'Pending Withdrawal' : asset.status;
+                const currentValueUSD = getCurrentValueUSD(asset);
+                const isGold = asset.type === 'Gold';
                 return (
                   <tr key={asset.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
                     <td className="px-4 py-3 text-amber-400 font-mono text-xs font-medium">{asset.id}</td>
@@ -68,7 +85,16 @@ export default function Assets() {
                     <td className="px-4 py-3 text-slate-300">{asset.quantity} {asset.unit}</td>
                     <td className="px-4 py-3 text-slate-400">{asset.depositDate}</td>
                     <td className="px-4 py-3 text-slate-400">{getDuration(asset.depositDate)}</td>
-                    <td className="px-4 py-3 text-white font-medium">{fmt(asset.valueUSD)}</td>
+                    <td className="px-4 py-3 text-slate-400">{fmt(asset.valueUSD)}</td>
+                    <td className="px-4 py-3 font-medium">
+                      {isGold && !goldPrice.isLoading ? (
+                        <span className={currentValueUSD > asset.valueUSD ? 'text-green-400' : 'text-red-400'}>
+                          {fmt(currentValueUSD)}
+                        </span>
+                      ) : (
+                        <span className="text-white">{fmt(currentValueUSD)}</span>
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-slate-400 font-mono text-xs">{asset.location}</td>
                     <td className="px-4 py-3"><span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[currentStatus]}`}>{currentStatus}</span></td>
                     <td className="px-4 py-3">
@@ -102,3 +128,4 @@ export default function Assets() {
     </div>
   );
 }
+

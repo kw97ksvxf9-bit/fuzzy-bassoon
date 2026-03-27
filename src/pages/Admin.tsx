@@ -1,19 +1,62 @@
 import { useState } from 'react';
 import { CheckCircle, XCircle, Edit, Ban, Plus, X } from 'lucide-react';
-import { users, assets as allAssets, withdrawalRequests as initialRequests, systemLogs } from '../data/mockData';
+import { users, withdrawalRequests as initialRequests, systemLogs } from '../data/mockData';
+import { useAssets } from '../context/AssetsContext';
+import type { Asset, Transaction } from '../data/mockData';
 
 const TABS = ['Users', 'Assets', 'Requests', 'System Logs'] as const;
 type Tab = typeof TABS[number];
 const logColors: Record<string, string> = { INFO: 'text-blue-400', WARNING: 'text-yellow-400', ERROR: 'text-red-400' };
 
+const ASSET_TYPES = ['Gold', 'Diamond', 'Platinum', 'Silver', 'Palladium', 'Ruby', 'Emerald'];
+
 export default function Admin() {
+  const { assets: allAssets, transactions, addDeposit } = useAssets();
   const [activeTab, setActiveTab] = useState<Tab>('Users');
   const [requests, setRequests] = useState(initialRequests);
   const [showAddAsset, setShowAddAsset] = useState(false);
-  const [newAsset, setNewAsset] = useState({ type: '', quantity: '', unit: '', location: '', valueUSD: '' });
+  const [newAsset, setNewAsset] = useState({
+    userId: users[0].id,
+    type: 'Gold',
+    quantity: '',
+    unit: 'bars',
+    location: '',
+    valueUSD: '',
+    depositDate: new Date().toISOString().split('T')[0],
+  });
 
   const approveRequest = (id: string) => setRequests(r => r.map(req => req.id === id ? { ...req, status: 'Approved' as const } : req));
   const rejectRequest = (id: string) => setRequests(r => r.map(req => req.id === id ? { ...req, status: 'Rejected' as const } : req));
+
+  const handleAddDeposit = () => {
+    if (!newAsset.quantity || !newAsset.location || !newAsset.valueUSD) return;
+    const assetId = `AST-${String(allAssets.length + 1).padStart(3, '0')}`;
+    const txnId = `TXN-${String(allAssets.length + transactions.length + 1).padStart(3, '0')}`;
+    const asset: Asset = {
+      id: assetId,
+      userId: newAsset.userId,
+      type: newAsset.type,
+      quantity: Number(newAsset.quantity),
+      unit: newAsset.unit,
+      depositDate: newAsset.depositDate,
+      valueUSD: Number(newAsset.valueUSD),
+      location: newAsset.location,
+      status: 'Stored',
+    };
+    const transaction: Transaction = {
+      id: txnId,
+      userId: newAsset.userId,
+      type: 'Deposit',
+      assetId,
+      amount: Number(newAsset.valueUSD),
+      date: newAsset.depositDate,
+      status: 'Completed',
+      description: `${newAsset.type} deposit - ${newAsset.quantity} ${newAsset.unit}`,
+    };
+    addDeposit(asset, transaction);
+    setShowAddAsset(false);
+    setNewAsset({ userId: users[0].id, type: 'Gold', quantity: '', unit: 'bars', location: '', valueUSD: '', depositDate: new Date().toISOString().split('T')[0] });
+  };
 
   return (
     <div className="space-y-6">
@@ -45,16 +88,17 @@ export default function Admin() {
         <div className="space-y-4">
           <div className="flex justify-between items-center">
             <h3 className="text-white font-semibold">All Assets ({allAssets.length})</h3>
-            <button onClick={() => setShowAddAsset(true)} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"><Plus size={16}/>Add Asset</button>
+            <button onClick={() => setShowAddAsset(true)} className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"><Plus size={16}/>Add Deposit</button>
           </div>
           <div className="bg-slate-900 border border-amber-400/20 rounded-xl overflow-hidden"><div className="overflow-x-auto"><table className="w-full text-sm">
-            <thead><tr className="border-b border-slate-700 bg-slate-800/50">{['Asset ID','Owner','Type','Quantity','Value (USD)','Location','Status'].map(h=><th key={h} className="text-left px-4 py-3 text-slate-400 font-medium">{h}</th>)}</tr></thead>
+            <thead><tr className="border-b border-slate-700 bg-slate-800/50">{['Asset ID','Owner','Type','Quantity','Deposit Date','Value (USD)','Location','Status'].map(h=><th key={h} className="text-left px-4 py-3 text-slate-400 font-medium">{h}</th>)}</tr></thead>
             <tbody>{allAssets.map(asset => (
               <tr key={asset.id} className="border-b border-slate-800 hover:bg-slate-800/40">
                 <td className="px-4 py-3 text-amber-400 font-mono text-xs font-medium">{asset.id}</td>
                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">{asset.userId}</td>
                 <td className="px-4 py-3 text-white">{asset.type}</td>
                 <td className="px-4 py-3 text-slate-300">{asset.quantity} {asset.unit}</td>
+                <td className="px-4 py-3 text-slate-400">{asset.depositDate}</td>
                 <td className="px-4 py-3 text-white">${asset.valueUSD.toLocaleString()}</td>
                 <td className="px-4 py-3 text-slate-400 font-mono text-xs">{asset.location}</td>
                 <td className="px-4 py-3"><span className={`px-2 py-0.5 rounded-full text-xs font-medium ${asset.status==='Stored'?'bg-green-500/20 text-green-400':asset.status==='Pending Withdrawal'?'bg-yellow-500/20 text-yellow-400':'bg-slate-500/20 text-slate-400'}`}>{asset.status}</span></td>
@@ -103,16 +147,50 @@ export default function Admin() {
 
       {showAddAsset && (
         <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-slate-900 border border-amber-400/30 rounded-2xl p-6 max-w-md w-full shadow-2xl">
-            <div className="flex items-center justify-between mb-5"><h3 className="text-white font-semibold text-lg">Add New Asset</h3><button onClick={() => setShowAddAsset(false)} className="text-slate-500 hover:text-white"><X size={20}/></button></div>
+          <div className="bg-slate-900 border border-amber-400/30 rounded-2xl p-6 max-w-md w-full shadow-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="text-white font-semibold text-lg">Add Deposit</h3>
+              <button onClick={() => setShowAddAsset(false)} className="text-slate-500 hover:text-white"><X size={20}/></button>
+            </div>
             <div className="space-y-4">
-              {[{key:'type',label:'Asset Type',placeholder:'e.g. Gold, Diamond...'},{key:'quantity',label:'Quantity',placeholder:'e.g. 5'},{key:'unit',label:'Unit',placeholder:'e.g. bars, carats, kg'},{key:'location',label:'Vault Location',placeholder:'e.g. VAULT-A-12'},{key:'valueUSD',label:'Value (USD)',placeholder:'e.g. 500000'}].map(f => (
-                <div key={f.key}><label className="block text-slate-300 text-sm font-medium mb-1.5">{f.label}</label><input value={newAsset[f.key as keyof typeof newAsset]} onChange={e => setNewAsset(a=>({...a,[f.key]:e.target.value}))} placeholder={f.placeholder} className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 placeholder-slate-500 text-sm"/></div>
-              ))}
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">Client</label>
+                <select value={newAsset.userId} onChange={e => setNewAsset(a => ({ ...a, userId: e.target.value }))} className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 text-sm">
+                  {users.map(u => <option key={u.id} value={u.id}>{u.name} ({u.id})</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">Deposit Date</label>
+                <input type="date" value={newAsset.depositDate} onChange={e => setNewAsset(a => ({ ...a, depositDate: e.target.value }))} className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 text-sm"/>
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">Asset Type</label>
+                <select value={newAsset.type} onChange={e => setNewAsset(a => ({ ...a, type: e.target.value }))} className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 text-sm">
+                  {ASSET_TYPES.map(t => <option key={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">Quantity</label>
+                  <input value={newAsset.quantity} onChange={e => setNewAsset(a => ({ ...a, quantity: e.target.value }))} placeholder="e.g. 5" type="number" min="0" className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 placeholder-slate-500 text-sm"/>
+                </div>
+                <div>
+                  <label className="block text-slate-300 text-sm font-medium mb-1.5">Unit</label>
+                  <input value={newAsset.unit} onChange={e => setNewAsset(a => ({ ...a, unit: e.target.value }))} placeholder="e.g. bars, carats, kg" className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 placeholder-slate-500 text-sm"/>
+                </div>
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">Value (USD)</label>
+                <input value={newAsset.valueUSD} onChange={e => setNewAsset(a => ({ ...a, valueUSD: e.target.value }))} placeholder="e.g. 500000" type="number" min="0" className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 placeholder-slate-500 text-sm"/>
+              </div>
+              <div>
+                <label className="block text-slate-300 text-sm font-medium mb-1.5">Vault Location</label>
+                <input value={newAsset.location} onChange={e => setNewAsset(a => ({ ...a, location: e.target.value }))} placeholder="e.g. VAULT-A-12" className="w-full bg-slate-800 border border-slate-700 text-white px-4 py-2.5 rounded-lg focus:outline-none focus:border-amber-400 placeholder-slate-500 text-sm"/>
+              </div>
             </div>
             <div className="flex gap-3 mt-5">
               <button onClick={() => setShowAddAsset(false)} className="flex-1 py-2.5 border border-slate-700 text-slate-300 rounded-lg hover:bg-slate-800 text-sm">Cancel</button>
-              <button onClick={() => setShowAddAsset(false)} className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold rounded-lg text-sm">Add Asset</button>
+              <button onClick={handleAddDeposit} disabled={!newAsset.quantity || !newAsset.location || !newAsset.valueUSD} className="flex-1 py-2.5 bg-amber-400 hover:bg-amber-500 disabled:opacity-50 disabled:cursor-not-allowed text-slate-900 font-semibold rounded-lg text-sm">Add Deposit</button>
             </div>
           </div>
         </div>

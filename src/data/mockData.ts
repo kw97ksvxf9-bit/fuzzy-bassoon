@@ -114,8 +114,6 @@ export const assetBreakdown = [
   { name: 'Platinum', value: 62000, color: '#94a3b8' },
 ];
 
-export const USD_TO_ZAR = 18.5;
-
 export const DEMO_CREDENTIALS = {
   admin: { email: 'admin@vaultsecure.co.za', password: 'Admin@1234' },
   user: { email: 'user@vaultsecure.co.za', password: 'User@1234' },
