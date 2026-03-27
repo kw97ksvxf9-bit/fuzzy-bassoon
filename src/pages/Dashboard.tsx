@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { TrendingUp, Package, Clock, DollarSign, TrendingDown, RefreshCw, Plus, Users } from 'lucide-react';
+import { TrendingUp, Package, Clock, DollarSign, TrendingDown, RefreshCw, Plus, Users, ArrowUp, ArrowDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
-  LineChart, Line, XAxis, YAxis, CartesianGrid
+  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  BarChart, Bar,
 } from 'recharts';
 import { portfolioHistory, assetBreakdown } from '../data/mockData';
 import { useAuth } from '../context/AuthContext';
@@ -46,10 +47,22 @@ export default function Dashboard() {
   }
 
   const totalValue = userAssets.reduce((sum, a) => sum + getCurrentValueUSD(a), 0);
+  const totalDepositValue = userAssets.reduce((sum, a) => sum + a.valueUSD, 0);
+  const totalGainLoss = totalValue - totalDepositValue;
+  const gainLossPercent = totalDepositValue > 0 ? (totalGainLoss / totalDepositValue) * 100 : 0;
   const pendingWithdrawals = isSuperAdmin
     ? withdrawalRequests.filter(r => r.status === 'Pending').length
     : userAssets.filter(a => a.status === 'Pending Withdrawal').length;
   const storageFee = Math.round(totalValue * 0.005);
+
+  // Average hold duration in days
+  const avgHoldDays = userAssets.length > 0
+    ? Math.round(userAssets.reduce((sum, a) => {
+        const depositDate = new Date(a.depositDate);
+        const now = new Date();
+        return sum + Math.floor((now.getTime() - depositDate.getTime()) / 86400000);
+      }, 0) / userAssets.length)
+    : 0;
 
   const fmt = (val: number) => formatCurrency(val, currency);
 
@@ -59,6 +72,13 @@ export default function Dashboard() {
   const chartData = portfolioHistory.map(p => ({
     ...p,
     value: p.value * cfg.rateFromUSD,
+  }));
+
+  // Asset performance bar chart data
+  const barChartData = userAssets.slice(0, 6).map(a => ({
+    name: `${a.type} (${a.id.split('-')[1]})`,
+    'Deposit Value': Math.round(a.valueUSD * cfg.rateFromUSD),
+    'Current Value': Math.round(getCurrentValueUSD(a) * cfg.rateFromUSD),
   }));
 
   const priceUp = goldPrice.priceUSD >= goldPrice.previousPriceUSD;
@@ -142,7 +162,7 @@ export default function Dashboard() {
             positive: true,
           },
           {
-            label: isSuperAdmin ? 'Total Assets (Platform)' : 'Total Assets',
+            label: 'Total Assets',
             value: userAssets.length.toString(),
             icon: Package,
             change: `${userAssets.filter(a => a.status === 'Stored').length} active`,
@@ -174,6 +194,34 @@ export default function Dashboard() {
             <p className={`text-xs mt-1 ${card.positive ? 'text-green-400' : 'text-slate-500'}`}>{card.change}</p>
           </div>
         ))}
+      </div>
+
+      {/* Enhanced portfolio stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
+          <p className="text-slate-400 text-sm mb-2">Total Gain / Loss</p>
+          <div className="flex items-center gap-2">
+            {totalGainLoss >= 0
+              ? <ArrowUp size={20} className="text-green-400" />
+              : <ArrowDown size={20} className="text-red-400" />}
+            <p className={`text-2xl font-bold ${totalGainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+              {totalGainLoss >= 0 ? '+' : ''}{fmt(totalGainLoss)}
+            </p>
+          </div>
+          <p className={`text-xs mt-1 ${totalGainLoss >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+            {gainLossPercent >= 0 ? '+' : ''}{gainLossPercent.toFixed(2)}% overall return
+          </p>
+        </div>
+        <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
+          <p className="text-slate-400 text-sm mb-2">Avg. Hold Duration</p>
+          <p className="text-2xl font-bold text-white">{avgHoldDays} <span className="text-base font-normal text-slate-400">days</span></p>
+          <p className="text-xs text-slate-500 mt-1">Across {userAssets.length} asset{userAssets.length !== 1 ? 's' : ''}</p>
+        </div>
+        <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
+          <p className="text-slate-400 text-sm mb-2">Deposit vs Current</p>
+          <p className="text-2xl font-bold text-white">{fmt(totalDepositValue)}</p>
+          <p className="text-xs text-slate-500 mt-1">Original deposit value</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -213,6 +261,29 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {/* Asset Performance Bar Chart */}
+      {barChartData.length > 0 && (
+        <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
+          <h3 className="text-white font-semibold mb-4">Asset Performance — Deposit vs Current Value</h3>
+          <ResponsiveContainer width="100%" height={220}>
+            <BarChart data={barChartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+              <XAxis dataKey="name" tick={{ fill: '#94a3b8', fontSize: 10 }} tickLine={false} />
+              <YAxis tick={{ fill: '#94a3b8', fontSize: 11 }} tickLine={false} axisLine={false}
+                tickFormatter={(v) => `${cfg.symbol}${(v / 1000).toFixed(0)}k`}
+              />
+              <Tooltip
+                formatter={(value, name) => [`${cfg.symbol}${Number(value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}`, name]}
+                contentStyle={{ backgroundColor: '#1e293b', border: '1px solid #D4AF37', borderRadius: 8, color: 'white' }}
+              />
+              <Legend formatter={(value) => <span className="text-slate-300 text-xs">{value}</span>} />
+              <Bar dataKey="Deposit Value" fill="#475569" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Current Value" fill="#D4AF37" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
 
       <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
         <h3 className="text-white font-semibold mb-4">Recent Activity</h3>

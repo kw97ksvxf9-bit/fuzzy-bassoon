@@ -12,6 +12,7 @@ const pageTitles: Record<string, string> = {
   '/superadmin': 'Super Admin Panel',
   '/support': 'Support Center',
   '/about': 'About InvestgoV1.001',
+  '/kyc': 'KYC Verification',
 };
 
 export default function Layout() {

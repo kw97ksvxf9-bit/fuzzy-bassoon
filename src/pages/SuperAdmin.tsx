@@ -1,10 +1,10 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Plus, X, Edit, Ban, CheckSquare, MessageSquare, Users, Package, FileText, Settings, BarChart3, Calendar, ShieldAlert, ShieldCheck } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, X, Edit, Ban, CheckSquare, MessageSquare, Users, Package, FileText, Settings, BarChart3, Calendar, ShieldAlert, ShieldCheck, ClipboardList } from 'lucide-react';
 import { systemLogs, type User, type Asset, type Transaction, type SupportTicket } from '../data/mockData';
 import { useAssets } from '../context/AssetsContext';
 import { useAuth } from '../context/AuthContext';
 
-const TABS = ['Overview', 'User Management', 'Investments & Assets', 'Withdrawal Requests', 'Support Tickets', 'System Logs', 'Platform Settings'] as const;
+const TABS = ['Overview', 'User Management', 'KYC Reviews', 'Investments & Assets', 'Withdrawal Requests', 'Support Tickets', 'System Logs', 'Platform Settings'] as const;
 type Tab = typeof TABS[number];
 
 const logColors: Record<string, string> = { INFO: 'text-blue-400', WARNING: 'text-yellow-400', ERROR: 'text-red-400' };
@@ -30,6 +30,7 @@ export default function SuperAdmin() {
     assets, transactions, withdrawalRequests, supportTickets, platformSettings,
     allUsers, addInvestment, approveWithdrawal, rejectWithdrawal,
     respondToTicket, updateTicketStatus, updatePlatformSettings, updateUser,
+    approveKyc, rejectKyc,
   } = useAssets();
 
   const [activeTab, setActiveTab] = useState<Tab>('Overview');
@@ -37,6 +38,7 @@ export default function SuperAdmin() {
   const [selectedTicket, setSelectedTicket] = useState<string | null>(null);
   const [replyMsg, setReplyMsg] = useState('');
   const [toast, setToast] = useState('');
+  const [kycRejectReason, setKycRejectReason] = useState<Record<string, string>>({});
 
   // Investment modal state
   const [showAddInvestment, setShowAddInvestment] = useState(false);
@@ -126,10 +128,12 @@ export default function SuperAdmin() {
   const pendingRequests = withdrawalRequests.filter(r => r.status === 'Pending').length;
   const openTickets = supportTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
   const flaggedAccounts = allUsers.filter(u => u.withdrawalBlocked === true).length;
+  const pendingKyc = allUsers.filter(u => u.kycStatus === 'pending').length;
 
   const tabIcons: Record<Tab, React.ElementType> = {
     'Overview': BarChart3,
     'User Management': Users,
+    'KYC Reviews': ClipboardList,
     'Investments & Assets': Package,
     'Withdrawal Requests': CheckSquare,
     'Support Tickets': MessageSquare,
@@ -178,7 +182,7 @@ export default function SuperAdmin() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-4">
               <p className="text-slate-500 text-xs">Open Support Tickets</p>
               <p className="text-2xl font-bold mt-1 text-purple-400">{openTickets}</p>
@@ -186,6 +190,10 @@ export default function SuperAdmin() {
             <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-4">
               <p className="text-slate-500 text-xs">Total Transactions</p>
               <p className="text-2xl font-bold mt-1 text-cyan-400">{transactions.length}</p>
+            </div>
+            <div className="bg-slate-900 border border-yellow-500/30 rounded-xl p-4 cursor-pointer hover:border-yellow-500/60 transition-colors" onClick={() => setActiveTab('KYC Reviews')}>
+              <p className="text-slate-500 text-xs">Pending KYC Reviews</p>
+              <p className="text-2xl font-bold mt-1 text-yellow-400">{pendingKyc}</p>
             </div>
             <div className="bg-slate-900 border border-red-500/30 rounded-xl p-4">
               <p className="text-slate-500 text-xs">Flagged Accounts</p>
@@ -205,6 +213,102 @@ export default function SuperAdmin() {
             >
               <Users size={16} />Manage Users
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* KYC Reviews */}
+      {activeTab === 'KYC Reviews' && (
+        <div className="space-y-4">
+          <div className="bg-slate-900 border border-amber-400/20 rounded-xl overflow-hidden">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-white font-semibold">KYC Submissions</h3>
+              <span className="text-xs text-slate-400">{pendingKyc} pending review</span>
+            </div>
+            {allUsers.filter(u => u.kycStatus && u.kycStatus !== 'unverified').length === 0 ? (
+              <div className="p-8 text-center text-slate-500">No KYC submissions yet</div>
+            ) : (
+              <div className="divide-y divide-slate-800">
+                {allUsers.filter(u => u.kycStatus && u.kycStatus !== 'unverified').map(user => (
+                  <div key={user.id} className="p-5">
+                    <div className="flex flex-wrap items-start justify-between gap-4">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-3 mb-1">
+                          <div className="w-9 h-9 rounded-full bg-amber-400 flex items-center justify-center text-slate-900 font-bold text-sm flex-shrink-0">
+                            {user.name.charAt(0)}
+                          </div>
+                          <div>
+                            <p className="text-white font-medium">{user.name}</p>
+                            <p className="text-slate-500 text-xs">{user.email} · {user.id}</p>
+                          </div>
+                          <span className={`px-2 py-0.5 rounded-full text-xs font-medium border ml-1 ${
+                            user.kycStatus === 'pending' ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30' :
+                            user.kycStatus === 'verified' ? 'bg-green-500/20 text-green-400 border-green-500/30' :
+                            user.kycStatus === 'rejected' ? 'bg-red-500/20 text-red-400 border-red-500/30' :
+                            'bg-slate-500/20 text-slate-400 border-slate-500/30'
+                          }`}>
+                            {user.kycStatus === 'pending' ? 'Pending Review' : user.kycStatus === 'verified' ? 'Verified' : user.kycStatus === 'rejected' ? 'Rejected' : user.kycStatus}
+                          </span>
+                        </div>
+                        {user.kycSubmittedAt && (
+                          <p className="text-slate-500 text-xs ml-12">Submitted: {new Date(user.kycSubmittedAt).toLocaleString()}</p>
+                        )}
+                        {user.kycReviewedAt && (
+                          <p className="text-slate-500 text-xs ml-12">Reviewed: {new Date(user.kycReviewedAt).toLocaleString()}</p>
+                        )}
+                        {user.kycDocuments && user.kycDocuments.length > 0 && (
+                          <div className="ml-12 mt-3 space-y-1.5">
+                            <p className="text-slate-400 text-xs font-medium uppercase tracking-wide mb-1">Documents</p>
+                            {user.kycDocuments.map((doc, i) => (
+                              <div key={i} className="flex items-center gap-2 text-xs text-slate-400">
+                                <CheckCircle size={12} className="text-green-400 flex-shrink-0" />
+                                <span className="font-medium text-slate-300">{doc.type}:</span>
+                                <span className="text-slate-500 truncate">{doc.fileName}</span>
+                                <span className="text-slate-600">· {doc.uploadDate}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        {user.kycStatus === 'rejected' && user.kycRejectionReason && (
+                          <div className="ml-12 mt-2 p-2 bg-red-500/10 border border-red-500/20 rounded-lg">
+                            <p className="text-red-400 text-xs">Rejection reason: {user.kycRejectionReason}</p>
+                          </div>
+                        )}
+                      </div>
+                      {user.kycStatus === 'pending' && (
+                        <div className="flex flex-col gap-2 flex-shrink-0">
+                          <button
+                            onClick={() => { approveKyc(user.id); showToast(`KYC approved for ${user.name}`); }}
+                            className="flex items-center gap-1.5 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 px-4 py-2 rounded-lg text-sm font-medium transition-colors"
+                          >
+                            <CheckCircle size={14} />Approve
+                          </button>
+                          <div className="flex gap-2">
+                            <input
+                              value={kycRejectReason[user.id] ?? ''}
+                              onChange={e => setKycRejectReason(prev => ({ ...prev, [user.id]: e.target.value }))}
+                              placeholder="Rejection reason..."
+                              className="flex-1 bg-slate-800 border border-slate-700 text-white text-xs px-3 py-2 rounded-lg focus:outline-none focus:border-red-400 placeholder-slate-600 w-40"
+                            />
+                            <button
+                              onClick={() => {
+                                const reason = kycRejectReason[user.id]?.trim() || 'Documents did not meet requirements';
+                                rejectKyc(user.id, reason);
+                                setKycRejectReason(prev => ({ ...prev, [user.id]: '' }));
+                                showToast(`KYC rejected for ${user.name}`);
+                              }}
+                              className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 border border-red-500/30 text-red-400 px-3 py-2 rounded-lg text-sm font-medium transition-colors flex-shrink-0"
+                            >
+                              <XCircle size={14} />Reject
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}

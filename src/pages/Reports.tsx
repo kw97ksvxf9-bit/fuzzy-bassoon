@@ -11,23 +11,42 @@ function downloadMockPDF(filename: string, title: string) {
   const a = document.createElement('a'); a.href = url; a.download = filename; a.click(); URL.revokeObjectURL(url);
 }
 
-function exportCSV(data: Transaction[]) {
+function exportCSV(data: Transaction[], label: string) {
   const headers = 'ID,Type,Asset,Amount (USD),Date,Status,Description\n';
   const rows = data.map(t => `${t.id},${t.type},${t.assetId},${t.amount},${t.date},${t.status},"${t.description}"`).join('\n');
   const blob = new Blob([headers + rows], { type: 'text/csv' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement('a'); a.href = url; a.download = 'vaultsecure-transactions.csv'; a.click(); URL.revokeObjectURL(url);
+  const a = document.createElement('a'); a.href = url; a.download = `vaultsecure-${label}.csv`; a.click(); URL.revokeObjectURL(url);
 }
 
 const statusColors: Record<string, string> = { Completed: 'bg-green-500/20 text-green-400', Pending: 'bg-yellow-500/20 text-yellow-400', Processing: 'bg-blue-500/20 text-blue-400' };
+
+type StatementType = 'All Transactions' | 'Investments Only' | 'Withdrawals Only' | 'Fees Only';
 
 export default function Reports() {
   const { currentUser } = useAuth();
   const { transactions } = useAssets();
   const [fromDate, setFromDate] = useState('2023-01-01');
   const [toDate, setToDate] = useState(new Date().toISOString().split('T')[0]);
+  const [statementType, setStatementType] = useState<StatementType>('All Transactions');
+
   const userTxns = currentUser?.role === 'admin' ? transactions : transactions.filter(t => t.userId === currentUser?.id);
-  const filtered = userTxns.filter(t => t.date >= fromDate && t.date <= toDate);
+  const dateFiltered = userTxns.filter(t => t.date >= fromDate && t.date <= toDate);
+
+  const filtered = dateFiltered.filter(t => {
+    if (statementType === 'All Transactions') return true;
+    if (statementType === 'Investments Only') return t.type === 'Investment' || t.type === 'Deposit';
+    if (statementType === 'Withdrawals Only') return t.type === 'Withdrawal';
+    if (statementType === 'Fees Only') return t.type === 'Fee';
+    return true;
+  });
+
+  const totalInvested = filtered.filter(t => t.type === 'Deposit' || t.type === 'Investment').reduce((sum, t) => sum + t.amount, 0);
+  const totalWithdrawn = filtered.filter(t => t.type === 'Withdrawal').reduce((sum, t) => sum + t.amount, 0);
+  const totalFees = filtered.filter(t => t.type === 'Fee').reduce((sum, t) => sum + t.amount, 0);
+  const netPosition = totalInvested - totalWithdrawn - totalFees;
+
+  const statementTypes: StatementType[] = ['All Transactions', 'Investments Only', 'Withdrawals Only', 'Fees Only'];
 
   return (
     <div className="space-y-6 max-w-4xl">
@@ -47,9 +66,19 @@ export default function Reports() {
         <div className="flex flex-wrap items-center justify-between gap-4 mb-5">
           <h3 className="text-white font-semibold">Transaction History</h3>
           <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <label className="text-slate-400 text-xs">Type:</label>
+              <select
+                value={statementType}
+                onChange={e => setStatementType(e.target.value as StatementType)}
+                className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400"
+              >
+                {statementTypes.map(t => <option key={t}>{t}</option>)}
+              </select>
+            </div>
             <div className="flex items-center gap-2"><label className="text-slate-400 text-xs">From:</label><input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)} className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400" /></div>
             <div className="flex items-center gap-2"><label className="text-slate-400 text-xs">To:</label><input type="date" value={toDate} onChange={e => setToDate(e.target.value)} className="bg-slate-800 border border-slate-700 text-slate-300 text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:border-amber-400" /></div>
-            <button onClick={() => exportCSV(filtered)} className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 px-4 py-1.5 rounded-lg text-sm transition-colors"><Download size={14} />Export CSV</button>
+            <button onClick={() => exportCSV(filtered, statementType.toLowerCase().replace(/ /g,'-'))} className="flex items-center gap-2 bg-green-500/10 hover:bg-green-500/20 border border-green-500/30 text-green-400 px-4 py-1.5 rounded-lg text-sm transition-colors"><Download size={14} />Download Statement</button>
           </div>
         </div>
         <div className="overflow-x-auto">
@@ -59,7 +88,7 @@ export default function Reports() {
               {filtered.map(txn => (
                 <tr key={txn.id} className="border-b border-slate-800 hover:bg-slate-800/40 transition-colors">
                   <td className="py-3 px-2 text-slate-500 font-mono text-xs">{txn.id}</td>
-                  <td className="py-3 px-2"><span className={`text-xs font-medium ${txn.type==='Deposit'?'text-green-400':txn.type==='Withdrawal'?'text-red-400':'text-yellow-400'}`}>{txn.type}</span></td>
+                  <td className="py-3 px-2"><span className={`text-xs font-medium ${txn.type==='Deposit'||txn.type==='Investment'?'text-green-400':txn.type==='Withdrawal'?'text-red-400':'text-yellow-400'}`}>{txn.type}</span></td>
                   <td className="py-3 px-2 text-slate-400 font-mono text-xs">{txn.assetId}</td>
                   <td className="py-3 px-2 text-white font-medium">${txn.amount.toLocaleString()}</td>
                   <td className="py-3 px-2 text-slate-400">{txn.date}</td>
@@ -67,10 +96,32 @@ export default function Reports() {
                   <td className="py-3 px-2 text-slate-300 max-w-xs truncate">{txn.description}</td>
                 </tr>
               ))}
-              {filtered.length===0 && <tr><td colSpan={7} className="text-center py-8 text-slate-500">No transactions in selected date range</td></tr>}
+              {filtered.length===0 && <tr><td colSpan={7} className="text-center py-8 text-slate-500">No transactions in selected range</td></tr>}
             </tbody>
           </table>
         </div>
+
+        {/* Summary Row */}
+        {filtered.length > 0 && (
+          <div className="mt-4 pt-4 border-t border-slate-700 grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-500 text-xs mb-1">Total Invested</p>
+              <p className="text-green-400 font-semibold">${totalInvested.toLocaleString()}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-500 text-xs mb-1">Total Withdrawn</p>
+              <p className="text-red-400 font-semibold">${totalWithdrawn.toLocaleString()}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-500 text-xs mb-1">Total Fees</p>
+              <p className="text-yellow-400 font-semibold">${totalFees.toLocaleString()}</p>
+            </div>
+            <div className="bg-slate-800/50 rounded-lg p-3">
+              <p className="text-slate-500 text-xs mb-1">Net Position</p>
+              <p className={`font-semibold ${netPosition >= 0 ? 'text-green-400' : 'text-red-400'}`}>${netPosition.toLocaleString()}</p>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
