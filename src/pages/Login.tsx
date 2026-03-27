@@ -11,6 +11,8 @@ interface LoginForm {
   password: string;
 }
 
+type DemoRole = 'superadmin' | 'admin' | 'user';
+
 export default function Login() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -27,7 +29,7 @@ export default function Login() {
     }
   };
 
-  const fillDemo = (type: 'admin' | 'user') => {
+  const fillDemo = (type: DemoRole) => {
     const creds = DEMO_CREDENTIALS[type];
     setValue('email', creds.email);
     setValue('password', creds.password);
@@ -41,8 +43,8 @@ export default function Login() {
           <div className="flex justify-center mb-4">
             <VaultLogo size={72} />
           </div>
-          <h1 className="text-3xl font-bold text-white">VaultSecure SA</h1>
-          <p className="text-amber-400 text-sm mt-1">Protecting Generational Wealth Since 1980</p>
+          <h1 className="text-3xl font-bold text-white">InvestgoV1.001</h1>
+          <p className="text-amber-400 text-sm mt-1">Secured Storage Facility Platform</p>
           <div className="mt-2 text-slate-500 text-xs">Est. 1980 · Johannesburg, South Africa</div>
         </div>
 
@@ -101,22 +103,29 @@ export default function Login() {
             <div className="space-y-2">
               <div className="flex items-center justify-between">
                 <div className="text-xs text-slate-400">
-                  <span className="text-amber-400 font-medium">Admin:</span> admin@vaultsecure.co.za / Admin@1234
+                  <span className="text-purple-400 font-medium">Super Admin:</span> superadmin@vaultsecure.co.za / Super@1234
                 </div>
-                <button onClick={() => fillDemo('admin')} className="text-xs text-amber-400 hover:text-amber-300 underline">Fill</button>
+                <button onClick={() => fillDemo('superadmin')} className="text-xs text-amber-400 hover:text-amber-300 underline ml-2 flex-shrink-0">Fill</button>
               </div>
               <div className="flex items-center justify-between">
                 <div className="text-xs text-slate-400">
-                  <span className="text-amber-400 font-medium">User:</span> user@vaultsecure.co.za / User@1234
+                  <span className="text-amber-400 font-medium">Admin:</span> admin@vaultsecure.co.za / Admin@1234
                 </div>
-                <button onClick={() => fillDemo('user')} className="text-xs text-amber-400 hover:text-amber-300 underline">Fill</button>
+                <button onClick={() => fillDemo('admin')} className="text-xs text-amber-400 hover:text-amber-300 underline ml-2 flex-shrink-0">Fill</button>
               </div>
+              <div className="flex items-center justify-between">
+                <div className="text-xs text-slate-400">
+                  <span className="text-green-400 font-medium">User:</span> user@vaultsecure.co.za / User@1234
+                </div>
+                <button onClick={() => fillDemo('user')} className="text-xs text-amber-400 hover:text-amber-300 underline ml-2 flex-shrink-0">Fill</button>
+              </div>
+              <p className="text-slate-600 text-xs mt-2">OTP for all accounts: <span className="text-slate-400 font-mono">123456</span></p>
             </div>
           </div>
         </div>
 
         <p className="text-center text-slate-600 text-xs mt-6">
-          © 2024 VaultSecure SA. All rights reserved. · Regulated by FSCA
+          © 2024 InvestgoV1.001. All rights reserved. · Regulated by FSCA
         </p>
       </div>
     </div>
