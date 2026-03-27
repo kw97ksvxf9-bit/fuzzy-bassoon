@@ -43,6 +43,13 @@ export interface WithdrawalRequest {
   requestDate: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   notes?: string;
+  withdrawalMethod?: 'bank_transfer' | 'physical_delivery';
+  bankDetails?: { region: string; bankName: string; accountHolder: string; [key: string]: string };
+  deliveryAddress?: string;
+  deliveryPhone?: string;
+  feeAmount?: number;
+  feePaymentMethod?: 'deduct' | 'upfront';
+  estimatedCompletion?: string;
 }
 
 export interface SystemLog {
