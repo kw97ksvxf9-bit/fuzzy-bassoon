@@ -9,6 +9,8 @@ export interface User {
   idNumber: string;
   accountType: string;
   suspended?: boolean;
+  withdrawalBlocked?: boolean;
+  withdrawalBlockReason?: string;
 }
 
 export interface Asset {
