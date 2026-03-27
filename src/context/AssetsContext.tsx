@@ -27,7 +27,22 @@ interface AssetsContextType {
   allUsers: User[];
   addDeposit: (asset: Asset, transaction: Transaction) => void;
   addInvestment: (asset: Asset, transaction: Transaction) => void;
-  requestWithdrawal: (assetId: string, userId: string, userName: string, assetType: string) => void;
+  requestWithdrawal: (
+    assetId: string,
+    userId: string,
+    userName: string,
+    assetType: string,
+    extras?: {
+      withdrawalMethod?: 'bank_transfer' | 'physical_delivery';
+      bankDetails?: { region: string; bankName: string; accountHolder: string; [key: string]: string };
+      deliveryAddress?: string;
+      deliveryPhone?: string;
+      feeAmount?: number;
+      feePaymentMethod?: 'deduct' | 'upfront';
+      estimatedCompletion?: string;
+    }
+  ) => void;
+  addFeeTransaction: (transaction: Transaction) => void;
   approveWithdrawal: (requestId: string, notes?: string) => void;
   rejectWithdrawal: (requestId: string, notes?: string) => void;
   addSupportTicket: (ticket: Omit<SupportTicket, 'id' | 'responses' | 'createdAt' | 'updatedAt'>) => void;
@@ -59,7 +74,21 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
     setTransactions(prev => [...prev, transaction]);
   };
 
-  const requestWithdrawal = (assetId: string, userId: string, userName: string, assetType: string) => {
+  const requestWithdrawal = (
+    assetId: string,
+    userId: string,
+    userName: string,
+    assetType: string,
+    extras?: {
+      withdrawalMethod?: 'bank_transfer' | 'physical_delivery';
+      bankDetails?: { region: string; bankName: string; accountHolder: string; [key: string]: string };
+      deliveryAddress?: string;
+      deliveryPhone?: string;
+      feeAmount?: number;
+      feePaymentMethod?: 'deduct' | 'upfront';
+      estimatedCompletion?: string;
+    }
+  ) => {
     setWithdrawalRequests(prev => {
       const id = `WR-${String(prev.length + 1).padStart(3, '0')}`;
       const newRequest: WithdrawalRequest = {
@@ -70,10 +99,29 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
         assetType,
         requestDate: new Date().toISOString().split('T')[0],
         status: 'Pending',
+        ...extras,
       };
       return [...prev, newRequest];
     });
     setAssets(prev => prev.map(a => a.id === assetId ? { ...a, status: 'Pending Withdrawal' as const } : a));
+    if (extras?.feeAmount && extras.feePaymentMethod === 'deduct') {
+      const feeId = `TXN-FEE-${Date.now()}`;
+      const feeTxn: Transaction = {
+        id: feeId,
+        userId,
+        type: 'Fee',
+        assetId,
+        amount: extras.feeAmount,
+        date: new Date().toISOString().split('T')[0],
+        status: 'Pending',
+        description: `Withdrawal fee (deducted) for ${assetType}`,
+      };
+      setTransactions(prev => [...prev, feeTxn]);
+    }
+  };
+
+  const addFeeTransaction = (transaction: Transaction) => {
+    setTransactions(prev => [...prev, transaction]);
   };
 
   const approveWithdrawal = (requestId: string, notes?: string) => {
@@ -151,6 +199,7 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
       requestWithdrawal,
       approveWithdrawal,
       rejectWithdrawal,
+      addFeeTransaction,
       addSupportTicket,
       respondToTicket,
       updateTicketStatus,
