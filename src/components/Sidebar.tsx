@@ -1,5 +1,5 @@
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Package, FileText, User, ShieldCheck, Info, LogOut, X } from 'lucide-react';
+import { LayoutDashboard, Package, FileText, User, ShieldCheck, Crown, Info, LogOut, X, HeadphonesIcon } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import VaultLogo from './VaultLogo';
 
@@ -8,10 +8,11 @@ interface SidebarProps {
   onClose: () => void;
 }
 
-const navLinks = [
+const baseNavLinks = [
   { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/assets', label: 'Assets', icon: Package },
   { to: '/reports', label: 'Reports', icon: FileText },
+  { to: '/support', label: 'Support', icon: HeadphonesIcon },
   { to: '/profile', label: 'Profile', icon: User },
   { to: '/about', label: 'About', icon: Info },
 ];
@@ -25,9 +26,21 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
     navigate('/');
   };
 
-  const links = currentUser?.role === 'admin'
-    ? [...navLinks, { to: '/admin', label: 'Admin', icon: ShieldCheck }]
-    : navLinks;
+  const links = [...baseNavLinks];
+  if (currentUser?.role === 'admin') {
+    links.push({ to: '/admin', label: 'Admin Panel', icon: ShieldCheck });
+  }
+  if (currentUser?.role === 'superadmin') {
+    links.push({ to: '/admin', label: 'Admin Panel', icon: ShieldCheck });
+    links.push({ to: '/superadmin', label: 'Super Admin', icon: Crown });
+  }
+
+  const roleLabel =
+    currentUser?.role === 'superadmin'
+      ? 'Super Admin'
+      : currentUser?.role === 'admin'
+      ? 'Platform Admin'
+      : 'Client';
 
   return (
     <>
@@ -39,8 +52,8 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
           <div className="flex items-center gap-3">
             <VaultLogo size={36} />
             <div>
-              <div className="text-amber-400 font-bold text-sm leading-tight">VaultSecure SA</div>
-              <div className="text-slate-400 text-xs">Est. 1980</div>
+              <div className="text-amber-400 font-bold text-sm leading-tight">InvestgoV1.001</div>
+              <div className="text-slate-400 text-xs">Secured Storage</div>
             </div>
           </div>
           <button onClick={onClose} className="lg:hidden text-slate-400 hover:text-white">
@@ -75,7 +88,7 @@ export default function Sidebar({ open, onClose }: SidebarProps) {
             </div>
             <div>
               <div className="text-white text-sm font-medium truncate w-32">{currentUser?.name}</div>
-              <div className="text-slate-400 text-xs capitalize">{currentUser?.role}</div>
+              <div className="text-slate-400 text-xs">{roleLabel}</div>
             </div>
           </div>
           <button

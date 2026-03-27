@@ -9,13 +9,15 @@ const pageTitles: Record<string, string> = {
   '/reports': 'Reports',
   '/profile': 'My Profile',
   '/admin': 'Admin Panel',
-  '/about': 'About VaultSecure SA',
+  '/superadmin': 'Super Admin Panel',
+  '/support': 'Support Center',
+  '/about': 'About InvestgoV1.001',
 };
 
 export default function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const location = useLocation();
-  const title = pageTitles[location.pathname] || 'VaultSecure SA';
+  const title = pageTitles[location.pathname] || 'InvestgoV1.001';
 
   return (
     <div className="flex h-screen bg-slate-950 overflow-hidden">

@@ -13,6 +13,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 const VALID_CREDENTIALS: Record<string, string> = {
+  'superadmin@vaultsecure.co.za': 'Super@1234',
   'admin@vaultsecure.co.za': 'Admin@1234',
   'user@vaultsecure.co.za': 'User@1234',
 };

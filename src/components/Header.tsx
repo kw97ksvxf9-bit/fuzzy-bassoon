@@ -1,20 +1,16 @@
 import { useState, useEffect } from 'react';
 import { Bell, Menu } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import { useAssets } from '../context/AssetsContext';
 
 interface HeaderProps {
   onMenuClick: () => void;
   title: string;
 }
 
-const notifications = [
-  { id: 1, text: 'Withdrawal request pending approval', time: '2h ago', unread: true },
-  { id: 2, text: 'Storage fee due in 5 days', time: '1d ago', unread: true },
-  { id: 3, text: 'New certificate available for AST-005', time: '2d ago', unread: false },
-];
-
 export default function Header({ onMenuClick, title }: HeaderProps) {
   const { currentUser } = useAuth();
+  const { notifications, markNotificationRead } = useAssets();
   const [now, setNow] = useState(new Date());
   const [showNotif, setShowNotif] = useState(false);
 
@@ -23,7 +19,8 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
     return () => clearInterval(timer);
   }, []);
 
-  const unreadCount = notifications.filter(n => n.unread).length;
+  const userNotifications = notifications.filter(n => n.userId === currentUser?.id);
+  const unreadCount = userNotifications.filter(n => n.unread).length;
 
   return (
     <header className="bg-slate-900 border-b border-amber-400/20 px-4 py-3 flex items-center justify-between sticky top-0 z-10">
@@ -56,15 +53,26 @@ export default function Header({ onMenuClick, title }: HeaderProps) {
 
           {showNotif && (
             <div className="absolute right-0 top-12 w-80 bg-slate-800 border border-amber-400/20 rounded-xl shadow-2xl z-50">
-              <div className="p-3 border-b border-slate-700">
+              <div className="p-3 border-b border-slate-700 flex items-center justify-between">
                 <h3 className="text-white font-semibold text-sm">Notifications</h3>
+                {unreadCount > 0 && (
+                  <span className="text-xs text-amber-400">{unreadCount} unread</span>
+                )}
               </div>
-              {notifications.map(n => (
-                <div key={n.id} className={`p-4 border-b border-slate-700 last:border-0 ${n.unread ? 'bg-amber-400/5' : ''}`}>
-                  <p className="text-sm text-slate-200">{n.text}</p>
-                  <p className="text-xs text-slate-500 mt-1">{n.time}</p>
-                </div>
-              ))}
+              {userNotifications.length === 0 ? (
+                <div className="p-4 text-center text-slate-500 text-sm">No notifications</div>
+              ) : (
+                userNotifications.slice(0, 5).map(n => (
+                  <div
+                    key={n.id}
+                    onClick={() => markNotificationRead(n.id)}
+                    className={`p-4 border-b border-slate-700 last:border-0 cursor-pointer hover:bg-slate-700/50 transition-colors ${n.unread ? 'bg-amber-400/5' : ''}`}
+                  >
+                    <p className="text-sm text-slate-200">{n.text}</p>
+                    <p className="text-xs text-slate-500 mt-1">{n.time}</p>
+                  </div>
+                ))
+              )}
             </div>
           )}
         </div>

@@ -1,73 +1,48 @@
-# React + TypeScript + Vite
+# InvestgoV1.001 — Secured Storage Facility Platform
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> A premium secured storage vault management platform for precious assets (gold, diamonds, platinum, etc.)
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- 🔐 Three-tier role system (Super Admin, Platform Admin, User)
+- 📊 Real-time gold price ticker with multi-currency support
+- 💎 Asset portfolio management with charts
+- �� Withdrawal request workflow
+- 🎫 Support ticket system
+- 📈 Reports and analytics
+- 🔑 OTP-based two-factor authentication
+- ��️ Investment backdating for superadmin
 
-## React Compiler
+## Roles
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+| Role | Access |
+|------|--------|
+| Super Admin | Full platform control, add investments with backdating, user management, settings |
+| Platform Admin | Approve withdrawals, manage support tickets, read-only platform view |
+| User | View portfolio, request withdrawals, submit support tickets |
 
-## Expanding the ESLint configuration
+## Demo Credentials
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+| Role | Email | Password | OTP |
+|------|-------|----------|-----|
+| Super Admin | superadmin@vaultsecure.co.za | Super@1234 | 123456 |
+| Platform Admin | admin@vaultsecure.co.za | Admin@1234 | 123456 |
+| User | user@vaultsecure.co.za | User@1234 | 123456 |
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+## Tech Stack
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+React 19, TypeScript, Vite 8, Tailwind CSS, React Router 7, Recharts, React Hook Form, Lucide Icons
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Getting Started
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## Build
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
+npm run preview
 ```

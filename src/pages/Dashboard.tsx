@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { TrendingUp, Package, Clock, DollarSign, TrendingDown, RefreshCw } from 'lucide-react';
+import { TrendingUp, Package, Clock, DollarSign, TrendingDown, RefreshCw, Plus, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend,
   LineChart, Line, XAxis, YAxis, CartesianGrid
@@ -16,17 +17,25 @@ const statusColors: Record<string, string> = {
   Processing: 'bg-blue-500/20 text-blue-400',
 };
 
+const txnTypeColor: Record<string, string> = {
+  Deposit: 'text-green-400',
+  Withdrawal: 'text-red-400',
+  Fee: 'text-yellow-400',
+  Investment: 'text-purple-400',
+};
+
 export default function Dashboard() {
   const { currentUser } = useAuth();
-  const { assets, transactions } = useAssets();
+  const { assets, transactions, withdrawalRequests, supportTickets } = useAssets();
+  const navigate = useNavigate();
   const [currency, setCurrency] = useState<Currency>('USD');
   const goldPrice = useGoldPrice();
 
   const cfg = getCurrencyConfig(currency);
+  const isSuperAdmin = currentUser?.role === 'superadmin';
+  const isAdmin = currentUser?.role === 'admin' || isSuperAdmin;
 
-  const userAssets = currentUser?.role === 'admin'
-    ? assets
-    : assets.filter(a => a.userId === currentUser?.id);
+  const userAssets = isAdmin ? assets : assets.filter(a => a.userId === currentUser?.id);
 
   /** Current USD value of an asset — gold uses live price, others use deposit value */
   function getCurrentValueUSD(asset: typeof assets[number]): number {
@@ -37,14 +46,14 @@ export default function Dashboard() {
   }
 
   const totalValue = userAssets.reduce((sum, a) => sum + getCurrentValueUSD(a), 0);
-  const pendingWithdrawals = userAssets.filter(a => a.status === 'Pending Withdrawal').length;
+  const pendingWithdrawals = isSuperAdmin
+    ? withdrawalRequests.filter(r => r.status === 'Pending').length
+    : userAssets.filter(a => a.status === 'Pending Withdrawal').length;
   const storageFee = Math.round(totalValue * 0.005);
 
   const fmt = (val: number) => formatCurrency(val, currency);
 
-  const userTxns = currentUser?.role === 'admin'
-    ? transactions
-    : transactions.filter(t => t.userId === currentUser?.id);
+  const userTxns = isAdmin ? transactions : transactions.filter(t => t.userId === currentUser?.id);
   const recentTxn = userTxns.slice(0, 5);
 
   const chartData = portfolioHistory.map(p => ({
@@ -61,6 +70,7 @@ export default function Dashboard() {
       <div className="flex flex-wrap justify-between items-center gap-3">
         <p className="text-slate-400 text-sm">
           Welcome back, <span className="text-amber-400 font-medium">{currentUser?.name}</span>
+          {isSuperAdmin && <span className="ml-2 text-xs bg-purple-400/20 text-purple-400 px-2 py-0.5 rounded-full">Super Admin</span>}
         </p>
         <div className="flex items-center gap-2 bg-slate-800 p-1 rounded-lg">
           <RefreshCw size={14} className="text-slate-500 ml-2" />
@@ -75,6 +85,29 @@ export default function Dashboard() {
           ))}
         </div>
       </div>
+
+      {/* Superadmin quick actions */}
+      {isSuperAdmin && (
+        <div className="flex gap-3 flex-wrap">
+          <button
+            onClick={() => navigate('/superadmin')}
+            className="flex items-center gap-2 bg-amber-400 hover:bg-amber-500 text-slate-900 font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <Plus size={16} />Add Investment
+          </button>
+          <button
+            onClick={() => navigate('/superadmin')}
+            className="flex items-center gap-2 bg-slate-800 hover:bg-slate-700 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            <Users size={16} />Manage Users
+          </button>
+          <div className="flex items-center gap-3 ml-auto">
+            <div className="text-xs text-slate-400 bg-slate-800 px-3 py-2 rounded-lg">
+              Open tickets: <span className="text-amber-400 font-medium">{supportTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length}</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Live Gold Price Ticker */}
       <div className="bg-slate-900 border border-amber-400/30 rounded-xl px-5 py-3 flex flex-wrap items-center gap-4">
@@ -101,10 +134,34 @@ export default function Dashboard() {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Total Portfolio Value', value: fmt(totalValue), icon: TrendingUp, change: '+12.4%', positive: true },
-          { label: 'Total Assets', value: userAssets.length.toString(), icon: Package, change: `${userAssets.filter(a => a.status === 'Stored').length} active`, positive: true },
-          { label: 'Pending Requests', value: pendingWithdrawals.toString(), icon: Clock, change: 'Awaiting approval', positive: false },
-          { label: 'Storage Fees Due', value: fmt(storageFee), icon: DollarSign, change: 'Due in 5 days', positive: false },
+          {
+            label: isSuperAdmin ? 'Platform Total Value' : 'Total Portfolio Value',
+            value: fmt(totalValue),
+            icon: TrendingUp,
+            change: '+12.4%',
+            positive: true,
+          },
+          {
+            label: isSuperAdmin ? 'Total Assets (Platform)' : 'Total Assets',
+            value: userAssets.length.toString(),
+            icon: Package,
+            change: `${userAssets.filter(a => a.status === 'Stored').length} active`,
+            positive: true,
+          },
+          {
+            label: isSuperAdmin ? 'Pending Withdrawals' : 'Pending Requests',
+            value: pendingWithdrawals.toString(),
+            icon: Clock,
+            change: 'Awaiting approval',
+            positive: false,
+          },
+          {
+            label: isSuperAdmin ? 'Est. Storage Fees' : 'Storage Fees Due',
+            value: fmt(storageFee),
+            icon: DollarSign,
+            change: isSuperAdmin ? 'Platform-wide' : 'Due in 5 days',
+            positive: false,
+          },
         ].map((card, i) => (
           <div key={i} className="bg-slate-900 border border-amber-400/20 rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
@@ -176,7 +233,7 @@ export default function Dashboard() {
                 <tr key={txn.id} className="border-b border-slate-800 hover:bg-slate-800/50 transition-colors">
                   <td className="py-3 text-slate-400 font-mono text-xs">{txn.id}</td>
                   <td className="py-3">
-                    <span className={`text-xs font-medium ${txn.type === 'Deposit' ? 'text-green-400' : txn.type === 'Withdrawal' ? 'text-red-400' : 'text-yellow-400'}`}>
+                    <span className={`text-xs font-medium ${txnTypeColor[txn.type] ?? 'text-slate-400'}`}>
                       {txn.type}
                     </span>
                   </td>
