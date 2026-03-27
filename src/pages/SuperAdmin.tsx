@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { CheckCircle, XCircle, Plus, X, Edit, Ban, CheckSquare, MessageSquare, Users, Package, FileText, Settings, BarChart3, Calendar } from 'lucide-react';
+import { CheckCircle, XCircle, Plus, X, Edit, Ban, CheckSquare, MessageSquare, Users, Package, FileText, Settings, BarChart3, Calendar, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { systemLogs, type User, type Asset, type Transaction, type SupportTicket } from '../data/mockData';
 import { useAssets } from '../context/AssetsContext';
 import { useAuth } from '../context/AuthContext';
@@ -125,6 +125,7 @@ export default function SuperAdmin() {
   const totalAssetValue = assets.reduce((sum, a) => sum + a.valueUSD, 0);
   const pendingRequests = withdrawalRequests.filter(r => r.status === 'Pending').length;
   const openTickets = supportTickets.filter(t => t.status === 'Open' || t.status === 'In Progress').length;
+  const flaggedAccounts = allUsers.filter(u => u.withdrawalBlocked === true).length;
 
   const tabIcons: Record<Tab, React.ElementType> = {
     'Overview': BarChart3,
@@ -177,7 +178,7 @@ export default function SuperAdmin() {
               </div>
             ))}
           </div>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-4">
               <p className="text-slate-500 text-xs">Open Support Tickets</p>
               <p className="text-2xl font-bold mt-1 text-purple-400">{openTickets}</p>
@@ -185,6 +186,10 @@ export default function SuperAdmin() {
             <div className="bg-slate-900 border border-amber-400/20 rounded-xl p-4">
               <p className="text-slate-500 text-xs">Total Transactions</p>
               <p className="text-2xl font-bold mt-1 text-cyan-400">{transactions.length}</p>
+            </div>
+            <div className="bg-slate-900 border border-red-500/30 rounded-xl p-4">
+              <p className="text-slate-500 text-xs">Flagged Accounts</p>
+              <p className="text-2xl font-bold mt-1 text-red-400">{flaggedAccounts}</p>
             </div>
           </div>
           <div className="flex gap-3">
@@ -214,7 +219,7 @@ export default function SuperAdmin() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-slate-700 bg-slate-800/50">
-                  {['ID', 'Name', 'Email', 'Role', 'Verified', 'Suspended', 'Account Type', 'Actions'].map(h => (
+                  {['ID', 'Name', 'Email', 'Role', 'Verified', 'Suspended', 'Withdrawal Block', 'Account Type', 'Actions'].map(h => (
                     <th key={h} className="text-left px-4 py-3 text-slate-400 font-medium">{h}</th>
                   ))}
                 </tr>
@@ -240,9 +245,14 @@ export default function SuperAdmin() {
                         ? <span className="text-red-400 text-xs">Yes</span>
                         : <span className="text-slate-500 text-xs">No</span>}
                     </td>
+                    <td className="px-4 py-3">
+                      {user.withdrawalBlocked
+                        ? <span className="text-red-400 text-xs flex items-center gap-1"><ShieldAlert size={12} />Blocked</span>
+                        : <span className="text-slate-500 text-xs">—</span>}
+                    </td>
                     <td className="px-4 py-3 text-slate-300">{user.accountType}</td>
                     <td className="px-4 py-3">
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 flex-wrap">
                         <button
                           onClick={() => { setEditingUser(user); setUserEdits({ name: user.name, role: user.role, accountType: user.accountType, verified: user.verified }); }}
                           className="flex items-center gap-1 text-xs text-blue-400 hover:text-blue-300"
@@ -254,6 +264,17 @@ export default function SuperAdmin() {
                           className={`flex items-center gap-1 text-xs ${user.suspended ? 'text-green-400 hover:text-green-300' : 'text-red-400 hover:text-red-300'}`}
                         >
                           <Ban size={12} />{user.suspended ? 'Activate' : 'Suspend'}
+                        </button>
+                        <button
+                          onClick={() => {
+                            updateUser(user.id, { withdrawalBlocked: !user.withdrawalBlocked });
+                            showToast(user.withdrawalBlocked ? `Withdrawal access restored for ${user.name}` : `Withdrawal access blocked for ${user.name}`);
+                          }}
+                          className={`flex items-center gap-1 text-xs ${user.withdrawalBlocked ? 'text-green-400 hover:text-green-300' : 'text-orange-400 hover:text-orange-300'}`}
+                        >
+                          {user.withdrawalBlocked
+                            ? <><ShieldCheck size={12} />Unblock</>
+                            : <><ShieldAlert size={12} />Block</>}
                         </button>
                       </div>
                     </td>

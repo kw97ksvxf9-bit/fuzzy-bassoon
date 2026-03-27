@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { Download, ArrowUpRight, Filter, X, Banknote, Package, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Download, ArrowUpRight, Filter, X, Banknote, Package, ChevronRight, ChevronLeft, Check, AlertTriangle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useAssets } from '../context/AssetsContext';
 import { CURRENCIES, type Currency, formatCurrency } from '../data/currencies';
 import { useGoldPrice, TROY_OZ_PER_BAR } from '../hooks/useGoldPrice';
+import { useNavigate } from 'react-router-dom';
 
 const statusColors: Record<string, string> = {
   'Stored': 'bg-green-500/20 text-green-400 border border-green-500/30',
@@ -45,11 +46,18 @@ const STEP_LABELS = ['Method', 'Details', 'Fees', 'Confirm'];
 
 export default function Assets() {
   const { currentUser } = useAuth();
-  const { assets: allAssets, requestWithdrawal, platformSettings } = useAssets();
+  const { assets: allAssets, requestWithdrawal, platformSettings, allUsers } = useAssets();
+  const navigate = useNavigate();
   const [currency, setCurrency] = useState<Currency>('USD');
   const [filterType, setFilterType] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
   const goldPrice = useGoldPrice();
+
+  // Get live user data (reflects admin changes like withdrawalBlocked)
+  const liveCurrentUser = allUsers.find(u => u.id === currentUser?.id) ?? currentUser;
+
+  // Withdrawal block modal state
+  const [showBlockModal, setShowBlockModal] = useState(false);
 
   // Wizard state
   const [wizardAsset, setWizardAsset] = useState<typeof allAssets[number] | null>(null);
@@ -107,6 +115,10 @@ export default function Assets() {
   }, [toast]);
 
   function openWizard(asset: typeof allAssets[number]) {
+    if (liveCurrentUser?.withdrawalBlocked) {
+      setShowBlockModal(true);
+      return;
+    }
     setWizardAsset(asset);
     setStep(1);
     setWithdrawalType(null);
@@ -161,6 +173,63 @@ export default function Assets() {
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[60] bg-amber-400 text-slate-900 font-semibold px-6 py-3 rounded-xl shadow-2xl text-sm">
           {toast}
+        </div>
+      )}
+
+      {/* Warning banner for flagged accounts */}
+      {liveCurrentUser?.withdrawalBlocked && (
+        <div className="bg-red-500/10 border border-red-500/30 rounded-xl px-4 py-3 flex items-center gap-3">
+          <AlertTriangle size={16} className="text-red-400 flex-shrink-0" />
+          <p className="text-red-300 text-sm">
+            ⚠ Your account has a restriction. Some actions may be limited. Contact support for assistance.
+          </p>
+        </div>
+      )}
+
+      {/* Withdrawal Blocked Modal */}
+      {showBlockModal && (
+        <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-red-500/30 rounded-2xl w-full max-w-md shadow-2xl">
+            <div className="flex items-center justify-between p-5 border-b border-slate-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertTriangle size={20} className="text-red-400" />
+                </div>
+                <h2 className="text-white font-semibold text-base">Withdrawal Temporarily Unavailable</h2>
+              </div>
+              <button onClick={() => setShowBlockModal(false)} className="text-slate-400 hover:text-white transition-colors">
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <p className="text-slate-300 text-sm leading-relaxed">
+                There is an issue with your account that requires attention before withdrawals can be processed. Please contact our support team for assistance.
+              </p>
+              <div className="bg-red-500/10 border border-red-500/20 rounded-lg px-4 py-3">
+                <p className="text-red-400 text-xs font-mono">
+                  ⚠ Account flagged — withdrawal access restricted. Reference: ACC-{liveCurrentUser?.id}
+                </p>
+              </div>
+              <div className="text-slate-400 text-xs space-y-1">
+                <p>📧 support@vaultsecure.co.za</p>
+                <p>📞 +27 10 999 0000</p>
+              </div>
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => { setShowBlockModal(false); navigate('/support'); }}
+                  className="flex-1 bg-red-500/20 hover:bg-red-500/30 border border-red-500/30 text-red-300 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Contact Support
+                </button>
+                <button
+                  onClick={() => setShowBlockModal(false)}
+                  className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

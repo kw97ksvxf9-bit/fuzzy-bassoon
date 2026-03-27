@@ -8,6 +8,7 @@ interface AuthContextType {
   verifyOTP: (otp: string) => boolean;
   logout: () => void;
   isAuthenticated: boolean;
+  updateCurrentUser: (updates: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
@@ -56,6 +57,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('vaultsecure_user');
   };
 
+  const updateCurrentUser = (updates: Partial<User>) => {
+    setCurrentUser(prev => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...updates };
+      localStorage.setItem('vaultsecure_user', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
   return (
     <AuthContext.Provider value={{
       currentUser,
@@ -64,6 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       verifyOTP,
       logout,
       isAuthenticated: !!currentUser,
+      updateCurrentUser,
     }}>
       {children}
     </AuthContext.Provider>
