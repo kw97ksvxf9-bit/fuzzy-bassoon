@@ -139,7 +139,8 @@ export default function SuperAdmin() {
   return (
     <div className="space-y-6">
       {toast && (
-        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-medium animate-pulse">
+        <div className="fixed top-4 right-4 z-50 bg-green-600 text-white px-4 py-3 rounded-xl shadow-2xl text-sm font-medium flex items-center gap-2">
+          <CheckCircle size={16} />
           {toast}
         </div>
       )}
